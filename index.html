@@ -1,0 +1,1700 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f4f7">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Wortduell</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one phone-width column — scores, board, live move preview, rack, actions, move log */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --fg: #12141a; --muted: #6a6f7d; --line: #e1e4ea;
+  --frame: #e5e8ee; --cell: #f8f9fb; --slot: #eef0f4;
+  --tw: #ff5a5f; --dw: #ffd3cc; --tl: #3d5afe; --dl: #cdd5ff; --prem-fg: #ffffff; --prem-fg-soft: #a12c25;
+  --tile: #ffffff; --tile-edge: #d3d7df; --tile-fg: #12141a; --blank-fg: #3d5afe; --pending: #eef1ff; --mark: #ffd6d8;
+  --accent: #3d5afe; --accent-fg: #ffffff; --good: #0f9f4f; --bad: #e5484d; --hl: #ffb020; --shadow: rgba(18, 20, 26, .10);
+  --sea: #eceff5; --sea-deep: #e2e6ee; --ship: #12141a; --ship-fg: #ffffff; --hit: #1f3b63; --hit-fg: #ffffff; --sunk: #1f3b63; --miss: #dcebf7; --wave: #8db4d6; --on-strong: #ffffff;
+  --tab: #12141a; --tab-fg: #ffffff; --scrim: rgba(10, 12, 18, .5);
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0e13; --surface: #161920; --fg: #eef0f5; --muted: #8a90a0; --line: #262a34;
+    --frame: #1b1e26; --cell: #12151b; --slot: #20242d;
+    --tw: #ff5a5f; --dw: #4d2729; --tl: #4d68ff; --dl: #252e5c; --prem-fg: #ffffff; --prem-fg-soft: #ffb3ac;
+    --tile: #2a2f3b; --tile-edge: #1a1d25; --tile-fg: #f4f5f8; --blank-fg: #9aa9ff; --pending: #222a4d; --mark: #5a2a2e;
+    --accent: #6d83ff; --accent-fg: #0c0e13; --good: #3fd17f; --bad: #ff6b6f; --hl: #ffb020; --shadow: rgba(0, 0, 0, .45);
+    --sea: #1b1f28; --sea-deep: #12151b; --ship: #e9ecf3; --ship-fg: #12141a; --hit: #3d6aa3; --hit-fg: #ffffff; --sunk: #3d6aa3; --miss: #15283a; --wave: #3c6890; --on-strong: #ffffff;
+    --tab: #eef0f5; --tab-fg: #0c0e13; --scrim: rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+    --bg: #0c0e13; --surface: #161920; --fg: #eef0f5; --muted: #8a90a0; --line: #262a34;
+    --frame: #1b1e26; --cell: #12151b; --slot: #20242d;
+    --tw: #ff5a5f; --dw: #4d2729; --tl: #4d68ff; --dl: #252e5c; --prem-fg: #ffffff; --prem-fg-soft: #ffb3ac;
+    --tile: #2a2f3b; --tile-edge: #1a1d25; --tile-fg: #f4f5f8; --blank-fg: #9aa9ff; --pending: #222a4d; --mark: #5a2a2e;
+    --accent: #6d83ff; --accent-fg: #0c0e13; --good: #3fd17f; --bad: #ff6b6f; --hl: #ffb020; --shadow: rgba(0, 0, 0, .45);
+    --sea: #1b1f28; --sea-deep: #12151b; --ship: #e9ecf3; --ship-fg: #12141a; --hit: #3d6aa3; --hit-fg: #ffffff; --sunk: #3d6aa3; --miss: #15283a; --wave: #3c6890; --on-strong: #ffffff;
+    --tab: #eef0f5; --tab-fg: #0c0e13; --scrim: rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+.app {
+  max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 28px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -.02em; margin: 0; display: flex; align-items: center; gap: 8px; }
+.brand .mini { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-fg); font-size: 17px; }
+.top-actions { display: flex; gap: 8px; }
+.top-actions .icon-btn { white-space: nowrap; }
+.icon-btn.armed { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 11px; font-weight: 700; font-size: 14px; }
+
+/* scores */
+.scores { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: stretch; }
+.player { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; gap: 0; position: relative; }
+.player.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.player .who { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.player .pts { font-family: var(--font-display); font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); visibility: hidden; }
+.player.active .dot { visibility: visible; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+.bag { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+.bag .who { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.bag .pts { font-family: var(--font-display); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; }
+
+/* board */
+.board-scroll { overflow: auto; border-radius: 10px; -webkit-overflow-scrolling: touch; }
+.board {
+  width: 100%; aspect-ratio: 1; max-width: 100%;
+  display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+  gap: 2px; padding: 3px; background: var(--frame); border-radius: 10px;
+  user-select: none; -webkit-user-select: none;
+  --cell-font: min(3.4vw, 19px);
+}
+.board-scroll.zoomed .board { width: 175%; max-width: none; --cell-font: min(5.9vw, 30px); }
+.cell {
+  position: relative; background: var(--cell); border-radius: 2px;
+  display: grid; place-items: center; min-width: 0; min-height: 0;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: calc(var(--cell-font) * .58); color: var(--prem-fg); line-height: 1;
+}
+.cell.TW { background: var(--tw); }
+.cell.DW { background: var(--dw); color: var(--prem-fg-soft); }
+.cell.TL { background: var(--tl); }
+.cell.DL { background: var(--dl); color: var(--fg); }
+.cell.star { color: var(--prem-fg-soft); font-size: calc(var(--cell-font) * 1.0); }
+.cell.drop-hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.tile {
+  position: absolute; inset: 0; border-radius: 3px;
+  background: var(--tile); color: var(--tile-fg);
+  box-shadow: inset 0 0 0 1px var(--tile-edge), 0 1px 2px var(--shadow);
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: var(--cell-font);
+}
+.tile .v { position: absolute; right: 8%; bottom: 6%; font-size: calc(var(--cell-font) * .45); font-weight: 700; line-height: 1; }
+.tile.blank-letter { color: var(--blank-fg); }
+.tile.pending { background: var(--pending); box-shadow: inset 0 0 0 2px var(--accent), inset 0 -2px 0 var(--tile-edge); touch-action: none; }
+.cell:has(.badge) { z-index: 3; overflow: visible; }
+.badge { position: absolute; bottom: 88%; left: 50%; transform: translateX(-50%); z-index: 4; padding: 2px 6px; border-radius: 999px; background: var(--good); color: #fff; font-family: var(--font-body); font-weight: 700; font-size: 12px; line-height: 1.3; white-space: nowrap; box-shadow: 0 2px 6px var(--shadow); pointer-events: none; }
+.badge.bad { background: var(--bad); }
+.badge.below { bottom: auto; top: 88%; }
+.badge.edge-r { left: auto; right: 0; transform: none; }
+.badge.edge-l { left: 0; transform: none; }
+.tile.last { box-shadow: inset 0 -2px 0 var(--tile-edge), 0 0 0 2px var(--hl); z-index: 1; }
+
+/* status line */
+.status { min-height: 26px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.status .msg { color: var(--muted); }
+.status { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; }
+.status .msg.ok { color: var(--good); font-weight: 700; }
+.status .msg.err { color: var(--bad); }
+.status .gain { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--good); font-variant-numeric: tabular-nums; }
+
+/* rack */
+.rack {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+  padding: 8px; border-radius: 12px; background: var(--frame);
+  min-height: 64px; user-select: none; -webkit-user-select: none;
+}
+.slot { aspect-ratio: 1; border-radius: 7px; background: var(--slot); position: relative; }
+.rtile {
+  position: absolute; inset: 0; border: 0; border-radius: 7px;
+  background: var(--tile); color: var(--tile-fg);
+  box-shadow: inset 0 0 0 1px var(--tile-edge), 0 2px 6px var(--shadow);
+  font-family: var(--font-display); font-weight: 800; font-size: min(7vw, 30px);
+  display: grid; place-items: center; touch-action: none; padding: 0;
+  transition: transform .12s ease;
+}
+.rtile .v { position: absolute; right: 9%; bottom: 10%; font-size: min(2.8vw, 12px); font-weight: 700; }
+.rtile.sel { transform: translateY(-6px); box-shadow: inset 0 -4px 0 var(--tile-edge), 0 0 0 3px var(--accent), 0 6px 10px var(--shadow); }
+.rtile.mark { background: var(--mark); transform: translateY(-6px); }
+.ghost { position: fixed; z-index: 50; pointer-events: none; width: 52px; height: 52px; border-radius: 8px; background: var(--tile); color: var(--tile-fg); box-shadow: inset 0 -4px 0 var(--tile-edge), 0 10px 20px var(--shadow); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 28px; transform: translate(-50%, -75%) scale(1.05); }
+
+/* actions */
+.actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+.actions.more { grid-template-columns: 1fr 1fr 1fr; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 11px; padding: 11px 8px; font-weight: 700; font-size: 15px; min-height: 46px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* log */
+.log h2 { font-family: var(--font-display); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 6px 0 6px; }
+.log ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.log li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 9px; background: var(--surface); font-size: 14px; }
+.log li .w { font-weight: 700; letter-spacing: .03em; min-width: 0; overflow-wrap: anywhere; }
+.log li .p { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.log li.c { border-left: 3px solid var(--hl); }
+.log li.h { border-left: 3px solid var(--accent); }
+.log .empty { color: var(--muted); font-size: 14px; }
+
+/* sheets */
+.overlay { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: grid; place-items: end center; padding: 0 max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.sheet { width: 100%; max-width: 520px; max-height: 88vh; overflow: auto; background: var(--surface); color: var(--fg); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.sheet h3 { font-family: var(--font-display); font-weight: 800; font-size: 22px; margin: 0; text-wrap: balance; }
+.sheet p { margin: 0; color: var(--muted); }
+.letters { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.letters button { aspect-ratio: 1; border: 0; border-radius: 8px; background: var(--tile); color: var(--tile-fg); box-shadow: inset 0 -3px 0 var(--tile-edge); font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 4px; font-weight: 700; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.field { display: flex; gap: 8px; }
+.field input { flex: 1; min-width: 0; font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); text-transform: uppercase; }
+.check-res { font-weight: 700; min-height: 22px; }
+.check-res.ok { color: var(--good); } .check-res.err { color: var(--bad); }
+.rules { margin: 0; padding-left: 18px; color: var(--fg); display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 13px; }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; height: 16px; border-radius: 3px; display: inline-block; }
+.final { font-family: var(--font-display); font-weight: 800; font-size: 40px; font-variant-numeric: tabular-nums; }
+.loading { display: grid; place-items: center; gap: 10px; padding: 60px 0; color: var(--muted); }
+
+/* ---------- mode switch ---------- */
+.mode { display: flex; flex-direction: column; gap: 12px; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.modes button { border: 0; background: none; border-radius: 9px; padding: 9px 6px; font-weight: 700; font-size: 15px; color: var(--muted); }
+.modes button[aria-selected="true"] { background: var(--tab); color: var(--tab-fg); }
+
+/* ---------- Wortschiffe ---------- */
+.sh-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fleet { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 6px; }
+.fleet .ship, .remain .ship { display: inline-flex; gap: 1px; }
+.fleet .ship i, .remain .ship i { width: 9px; height: 9px; background: var(--muted); opacity: .55; display: block; }
+.fleet .ship i:first-child, .remain .ship i:first-child { border-radius: 99px 0 0 99px; }
+.fleet .ship i:last-child, .remain .ship i:last-child { border-radius: 0 99px 99px 0; }
+.fleet .ship i.h { background: var(--sunk); opacity: 1; }
+.fleet .ship.sunk i, .remain .ship.sunk i { background: var(--sunk); opacity: .3; }
+.remain { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 8px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.remain .ships { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.remain .ship i { width: 15px; height: 15px; opacity: 1; background: var(--sunk); }
+.remain .ship.sunk { position: relative; }
+.remain .ship.sunk::after { content: ""; position: absolute; left: -2px; right: -2px; top: 50%; height: 2px; background: var(--muted); transform: rotate(-8deg); }
+.remain .count { margin-left: auto; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.sh-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.sh-board {
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px;
+  padding: 4px; border-radius: 12px; background: var(--sea-deep);
+  width: 100%; aspect-ratio: 1; max-width: 100%;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+  --f: min(6.4vw, 30px);
+}
+.sh-cell {
+  position: relative; display: grid; place-items: center; min-width: 0; min-height: 0;
+  border-radius: 5px; background: var(--sea); color: var(--fg);
+  font-family: var(--font-display); font-weight: 800; font-size: var(--f); line-height: 1;
+}
+.sh-cell.letter { background: var(--tile); color: var(--tile-fg); box-shadow: inset 0 0 0 1px var(--tile-edge), 0 1px 2px var(--shadow); }
+.sh-cell.sel { background: var(--accent); color: var(--accent-fg); box-shadow: none; }
+.sh-cell.sel.bad { background: var(--bad); color: var(--on-strong); }
+.sh-cell.ship { background: var(--ship); color: var(--ship-fg); box-shadow: none; }
+.sh-cell.preview { outline: 3px solid var(--accent); outline-offset: -3px; }
+.sh-cell.preview.bad { outline-color: var(--bad); }
+.sh-cell.recent { box-shadow: 0 0 0 2px var(--hl) inset; }
+.sh-board.mini { --f: min(3.4vw, 15px); gap: 2px; padding: 3px; border-radius: 8px; width: min(46vw, 230px); }
+.sh-board.mini .sh-cell { border-radius: 3px; }
+.sh-board.mini .sh-cell.letter { background: var(--sea); color: var(--muted); box-shadow: none; }
+.sh-board.mini .sh-cell.ship { background: var(--ship); color: var(--ship-fg); }
+.ship-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.ship-pick button { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 10px; }
+.ship-pick button i { width: 14px; height: 14px; border-radius: 3px; background: var(--ship); display: block; }
+.ship-pick button.vert { flex-direction: column; }
+.ship-pick button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.ship-pick button.placed { opacity: .4; }
+.sh-act { grid-template-columns: 2fr 1fr 1fr; }
+.sh-cell .ord { position: absolute; left: 6%; top: 4%; font-family: var(--font-body); font-size: calc(var(--f) * .38); font-weight: 700; line-height: 1; }
+.sh-own { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.sh-own > div { display: flex; flex-direction: column; gap: 6px; }
+.sh-side { flex: 1; min-width: 120px; }
+.sh-last { font-size: 14px; background: var(--surface); border-radius: 10px; padding: 8px 10px; }
+.sh-last b { letter-spacing: .04em; }
+
+#shOwn, #shEnemy { touch-action: manipulation; }
+#shSetupBoard, #shPick button { touch-action: none; }
+.sh-cell.reveal, .lg.reveal { background: repeating-linear-gradient(135deg, var(--ship) 0 5px, color-mix(in srgb, var(--ship) 55%, var(--sea)) 5px 10px); color: var(--ship-fg); box-shadow: none; }
+.end-reveal { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.end-reveal .sh-board.mini { width: min(64vw, 260px); }
+.end-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; font-size: 13px; color: var(--muted); }
+.end-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lg { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.lg.hit { background: var(--hit); } .lg.miss { background: var(--miss); } .lg.sunk { background: var(--sunk); }
+.sh-board { --gap: 3px; }
+.sh-board.mini { --gap: 2px; }
+/* shots: sea for misses, amber for hits, sunk ships merge into one navy capsule */
+.sh-cell.miss, .sh-cell.hit, .sh-cell.sunk { box-shadow: none; }
+.sh-cell.miss { background: var(--miss); }
+.sh-cell.hit { background: var(--hit); border-radius: 9px; }
+.sh-board.mini .sh-cell.hit { border-radius: 4px; }
+.sh-cell.sunk { background: var(--sunk); }
+.sh-cell .lt { position: absolute; left: 7%; top: 5%; font-size: calc(var(--f) * .42); line-height: 1; font-weight: 700; color: var(--muted); }
+.sh-cell.hit .lt { color: var(--hit-fg); opacity: .8; }
+.sh-cell.sunk .lt { color: var(--on-strong); opacity: .7; }
+.sh-cell .wave { width: 56%; height: auto; fill: none; stroke: var(--wave); stroke-width: 2.4; stroke-linecap: round; }
+.sh-cell .hitdot { width: 22%; height: 22%; opacity: .9; border-radius: 50%; background: var(--hit-fg); }
+.sh-board.mini .sh-cell .lt { display: none; }
+.sh-cell.cap-h.cap-start { border-radius: 999px 0 0 999px; }
+.sh-cell.cap-h.cap-end { border-radius: 0 999px 999px 0; }
+.sh-cell.cap-v.cap-start { border-radius: 999px 999px 0 0; }
+.sh-cell.cap-v.cap-end { border-radius: 0 0 999px 999px; }
+.sh-cell.cap-mid { border-radius: 0; }
+.sh-cell.cap-h:not(.cap-end) { box-shadow: var(--gap) 0 0 var(--sunk); }
+.sh-cell.cap-v:not(.cap-end) { box-shadow: 0 var(--gap) 0 var(--sunk); }
+.wordbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 54px; padding: 8px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.wordbar.bad { border-color: var(--bad); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.chip { width: 30px; height: 36px; padding: 0; border-radius: 7px; border: 1px solid var(--tile-edge); background: var(--tile); color: var(--tile-fg); font-family: var(--font-display); font-weight: 800; font-size: 19px; box-shadow: 0 1px 2px var(--shadow); }
+.wordbar.bad .chip { border-color: var(--bad); color: var(--bad); }
+.chips .placeholder { color: var(--muted); font-size: 14px; }
+.sh-note { font-size: 14px; color: var(--muted); }
+.sh-note:empty { display: none; }
+.sh-note.err { color: var(--bad); }
+.pop { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 24px max(24px, env(safe-area-inset-right, 0px)) 24px max(24px, env(safe-area-inset-left, 0px)); background: var(--scrim); }
+.pop-card { width: 100%; max-width: 320px; background: var(--surface); color: var(--fg); border-radius: 22px; padding: 26px 22px 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 20px 50px var(--shadow); animation: popIn .28s cubic-bezier(.2, 1.4, .4, 1); }
+.pop-card h3 { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin: 0; text-wrap: balance; }
+.pop-card p { margin: 0; color: var(--muted); }
+.pop-num { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 34px; color: var(--on-strong); }
+.pop-card.mine .pop-num { color: var(--accent-fg); background: var(--accent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent); }
+.pop-card.theirs .pop-num { background: var(--hit); box-shadow: 0 0 0 8px color-mix(in srgb, var(--hit) 22%, transparent); }
+.pop-card.theirs .pop-num { color: var(--hit-fg); }
+.pop-hint { font-size: 12px; color: var(--muted); padding-top: 6px; }
+@keyframes popIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.ship-ghost { position: fixed; z-index: 60; pointer-events: none; display: flex; gap: 3px; opacity: .92; filter: drop-shadow(0 8px 14px var(--shadow)); }
+.ship-ghost.vert { flex-direction: column; }
+.ship-ghost i { width: var(--s); height: var(--s); border-radius: 6px; background: var(--ship); display: block; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <h1 class="brand"><span class="mini">W</span>Wortduell</h1>
+    <div class="top-actions">
+      <button class="icon-btn" id="restartBtn">Neu starten</button>
+      <button class="icon-btn" id="menuBtn" aria-label="Menü öffnen">Menü</button>
+    </div>
+  </header>
+
+  <nav class="modes" id="modes" role="tablist" aria-label="Spielmodus">
+    <button role="tab" data-mode="classic" aria-selected="true">Wortduell</button>
+    <button role="tab" data-mode="ships" aria-selected="false">Wortschiffe</button>
+  </nav>
+
+  <div class="mode" id="modeClassic">
+  <section class="scores" aria-label="Punktestand">
+    <div class="player" id="pHuman"><span class="who"><span class="dot"></span>Du</span><span class="pts" id="sHuman">0</span></div>
+    <div class="player" id="pCpu"><span class="who"><span class="dot"></span><span id="cpuLabel">Computer</span></span><span class="pts" id="sCpu">0</span></div>
+    <div class="bag"><span class="who">Beutel</span><span class="pts" id="bagCount">–</span></div>
+  </section>
+
+  <div class="board-scroll" id="boardScroll">
+    <div class="board" id="board" role="grid" aria-label="Spielbrett"></div>
+  </div>
+
+  <div class="status" aria-live="polite"><span class="msg" id="msg">Wörterbuch wird geladen …</span><span class="gain" id="gain"></span></div>
+
+  <div class="rack" id="rack" aria-label="Deine Buchstaben"></div>
+
+  <div class="actions" id="actMain">
+    <button class="btn primary" id="playBtn" disabled>Legen</button>
+    <button class="btn" id="recallBtn">Zurück</button>
+    <button class="btn" id="shuffleBtn">Mischen</button>
+  </div>
+  <div class="actions more" id="actMore">
+    <button class="btn" id="swapBtn">Tauschen</button>
+    <button class="btn" id="passBtn">Passen</button>
+    <button class="btn" id="zoomBtn" aria-pressed="false">Lupe</button>
+  </div>
+
+  <section class="log">
+    <h2>Spielverlauf</h2>
+    <ol id="log"></ol>
+  </section>
+  </div>
+
+  <div class="mode" id="modeShips" hidden>
+    <section class="sh-scores" aria-label="Flotten">
+      <div class="player" id="shPH"><span class="who"><span class="dot"></span>Deine Flotte</span><span class="fleet" id="shFleetH"></span></div>
+      <div class="player" id="shPC"><span class="who"><span class="dot"></span><span id="shCpuLabel">PC</span></span><span class="fleet" id="shFleetC"></span></div>
+    </section>
+
+    <section class="mode" id="shSetup">
+      <div class="status"><span class="msg" id="shSetupMsg">Zieh die Schiffe auf dein Brett.</span></div>
+      <div class="sh-board" id="shSetupBoard" aria-label="Dein Brett"></div>
+      <div class="ship-pick" id="shPick" aria-label="Schiffe"></div>
+      <div class="actions more">
+        <button class="btn" id="shRotate">Drehen</button>
+        <button class="btn" id="shRandom">Zufällig</button>
+        <button class="btn" id="shClear">Leeren</button>
+      </div>
+      <button class="btn primary" id="shStart" disabled>Los geht's</button>
+    </section>
+
+    <section class="mode" id="shBattle" hidden>
+      <div class="remain" id="shRemain" aria-label="Übrige Schiffe des Computers"></div>
+      <div class="sh-label">Brett des Computers · tippe Buchstaben für ein Wort</div>
+      <div class="sh-board enemy" id="shEnemy" aria-label="Brett des Computers"></div>
+      <div class="wordbar" id="shBar" aria-live="polite"><div class="chips" id="shChips"></div><span class="gain" id="shGain"></span></div>
+      <div class="msg sh-note" id="shMsg"></div>
+      <div class="actions sh-act">
+        <button class="btn primary" id="shFire" disabled>Feuer!</button>
+        <button class="btn" id="shBack">⌫</button>
+        <button class="btn" id="shCancel">Löschen</button>
+      </div>
+      <div class="sh-own">
+        <div>
+          <div class="sh-label">Dein Brett</div>
+          <div class="sh-board mini" id="shOwn" aria-label="Dein Brett"></div>
+        </div>
+        <div class="sh-side">
+          <div class="sh-label">Letzter Zug des Computers</div>
+          <div class="sh-last" id="shLast">Noch keiner.</div>
+        </div>
+      </div>
+      <section class="log">
+        <h2>Spielverlauf</h2>
+        <ol id="shLog"></ol>
+      </section>
+    </section>
+  </div>
+</div>
+
+<!-- Blank letter picker -->
+<div class="overlay" id="blankSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="blankTitle">
+    <h3 id="blankTitle">Joker: Welcher Buchstabe?</h3>
+    <p>Der Joker zählt 0 Punkte.</p>
+    <div class="letters" id="blankLetters"></div>
+    <button class="btn" id="blankCancel">Abbrechen</button>
+  </div>
+</div>
+
+<!-- Menu -->
+<div class="overlay" id="menuSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="menuTitle">
+    <h3 id="menuTitle">Menü</h3>
+    <div>
+      <p style="margin-bottom:6px">Stärke des Computers (gilt ab dem nächsten Zug)</p>
+      <div class="seg" id="diffSeg">
+        <button data-d="easy" aria-pressed="false">Leicht</button>
+        <button data-d="medium" aria-pressed="false">Mittel</button>
+        <button data-d="hard" aria-pressed="false">Schwer</button>
+      </div>
+    </div>
+    <div>
+      <p style="margin-bottom:6px">Wort im Wörterbuch nachschlagen</p>
+      <div class="field">
+        <input id="checkInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="z. B. QUARK">
+        <button class="btn" id="checkBtn">Prüfen</button>
+      </div>
+      <div class="check-res" id="checkRes"></div>
+    </div>
+    <div>
+      <p style="margin-bottom:6px">Felder</p>
+      <div class="legend">
+        <span><i style="background:var(--tw)"></i>3W · dreifacher Wortwert</span>
+        <span><i style="background:var(--dw)"></i>2W · doppelter Wortwert</span>
+        <span><i style="background:var(--tl)"></i>3B · dreifacher Buchstabenwert</span>
+        <span><i style="background:var(--dl)"></i>2B · doppelter Buchstabenwert</span>
+      </div>
+    </div>
+    <ul class="rules">
+      <li>Stein antippen, dann Feld antippen. Oder Stein aufs Brett ziehen.</li>
+      <li>Gelegten Stein antippen, um ihn zurückzunehmen.</li>
+      <li>Erlaubt sind deutsche, englische und schwedische Wörter. Schwedische Wörter mit Å gehen nicht, dafür gibt es keinen Stein.</li>
+      <li>Alle 7 Steine in einem Zug: 50 Bonuspunkte.</li>
+      <li>Tauschen geht nur, solange mindestens 7 Steine im Beutel sind.</li>
+      <li>Nach 6 Zügen ohne Punkte hintereinander endet das Spiel.</li>
+    </ul>
+    <div id="newGameArea" style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn" id="newGameBtn">Neues Spiel</button>
+    </div>
+    <button class="btn primary" id="menuClose">Schließen</button>
+  </div>
+</div>
+
+<!-- Game over -->
+<div class="overlay" id="endSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="endTitle">
+    <h3 id="endTitle">Spiel vorbei</h3>
+    <div class="final" id="endScore"></div>
+    <p id="endText"></p>
+    <button class="btn primary" id="endNew">Neues Spiel</button>
+    <button class="btn" id="endClose">Brett ansehen</button>
+  </div>
+</div>
+
+<!-- Wortschiffe menu -->
+<div class="overlay" id="shMenuSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="shMenuTitle">
+    <h3 id="shMenuTitle">Wortschiffe</h3>
+    <div>
+      <p style="margin-bottom:6px">Stärke des Computers</p>
+      <div class="seg" id="shDiffSeg">
+        <button data-d="easy" aria-pressed="false">Leicht</button>
+        <button data-d="medium" aria-pressed="false">Mittel</button>
+        <button data-d="hard" aria-pressed="false">Schwer</button>
+      </div>
+    </div>
+    <ul class="rules">
+      <li>Jeder hat ein eigenes 8×8-Brett voller Buchstaben und vier Schiffe mit 4, 3, 3 und 2 Feldern.</li>
+      <li>Schiffe liegen gerade, waagerecht oder senkrecht. Sie dürfen sich berühren.</li>
+      <li>Tippe auf dem Brett des Computers Buchstaben nacheinander an, egal wo sie liegen, bis sie ein Wort mit 2 bis 10 Buchstaben ergeben. Ob es im Wörterbuch steht, wird erst beim Feuern geprüft.</li>
+      <li>Treffer zeigen sich als einzelne blaue Felder. Ist ein Schiff ganz getroffen, wachsen seine Felder zu einer Form zusammen.</li>
+      <li>Erlaubt sind deutsche, englische und schwedische Wörter (ohne Å). Der Computer spielt nur geläufige deutsche Wörter.</li>
+      <li>Jedes angetippte Feld ist ein Schuss. Jeder Buchstabe lässt sich nur einmal benutzen: Beschossene Felder sind danach gesperrt.</li>
+      <li>Lässt sich aus den übrigen Buchstaben kein Wort mehr bilden, passt man. Passen beide nacheinander, gewinnt, wer mehr Treffer hat.</li>
+      <li>Danach ist der Computer dran. Wer zuerst alle Schiffe versenkt, gewinnt.</li>
+    </ul>
+    <button class="btn" id="shNewBtn">Neues Spiel</button>
+    <button class="btn primary" id="shMenuClose">Schließen</button>
+  </div>
+</div>
+
+<div class="pop" id="shPop" hidden role="alert">
+  <div class="pop-card" id="shPopCard">
+    <div class="pop-num" id="shPopNum"></div>
+    <h3 id="shPopTitle"></h3>
+    <p id="shPopText"></p>
+    <span class="pop-hint">Tippen zum Schließen</span>
+  </div>
+</div>
+
+<div class="overlay" id="shEndSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="shEndTitle">
+    <h3 id="shEndTitle">Spiel vorbei</h3>
+    <p id="shEndText"></p>
+    <div class="end-reveal" id="shEndReveal" hidden>
+      <div class="sh-label">Hier lagen die Schiffe des Computers</div>
+      <div class="sh-board mini" id="shEndBoard"></div>
+      <div class="end-legend"><span><i class="lg reveal"></i>nicht gefunden</span><span><i class="lg hit"></i>getroffen</span><span><i class="lg miss"></i>Wasser</span><span><i class="lg sunk"></i>versenkt</span></div>
+    </div>
+    <button class="btn primary" id="shEndNew">Neues Spiel</button>
+    <button class="btn" id="shEndClose">Bretter ansehen</button>
+  </div>
+</div>
+
+<script src="dict.js"></script>
+<script src="dict-ai.js"></script>
+<script>
+(() => {
+"use strict";
+// ---------- tiles ----------
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ";
+const BLANK = 29, N = 15, CENTER = 7 * 15 + 7;
+const VALUES_BY = { E:1,N:1,S:1,I:1,R:1,T:1,U:1,A:1,D:1,H:2,G:2,L:2,O:2,M:3,B:3,W:3,Z:3,C:4,F:4,K:4,P:4,"Ä":6,J:6,"Ü":6,V:6,"Ö":8,X:8,Q:10,Y:10 };
+const COUNTS_BY = { E:15,N:9,S:7,I:6,R:6,T:6,U:6,A:5,D:4,H:4,G:3,L:3,O:3,M:4,B:2,W:1,Z:1,C:2,F:2,K:2,P:1,"Ä":1,J:1,"Ü":1,V:1,"Ö":1,X:1,Q:1,Y:1 };
+const VAL = [...ALPHA].map(ch => VALUES_BY[ch]); VAL[BLANK] = 0;
+const tileValue = (l, blank) => blank ? 0 : VAL[l];
+
+// ---------- premium squares ----------
+const PREM = new Array(225).fill("");
+const quad = { TW: [[0,0],[0,7],[7,0]], DW: [[1,1],[2,2],[3,3],[4,4],[7,7]], TL: [[1,5],[5,1],[5,5]], DL: [[0,3],[3,0],[2,6],[6,2],[3,7],[7,3],[6,6]] };
+for (const [k, list] of Object.entries(quad)) for (const [r, c] of list)
+  for (const rr of [r, 14 - r]) for (const cc of [c, 14 - c]) PREM[rr * 15 + cc] = k;
+const LM = k => k === "DL" ? 2 : k === "TL" ? 3 : 1;
+const WM = k => k === "DW" ? 2 : k === "TW" ? 3 : 1;
+
+// ---------- dictionary (DAWG) ----------
+// E_FULL checks the player's words; the computer only plays common words from E_AI.
+let E = null, E_FULL = null, E_AI = null;
+function decode(b64) {
+  const bin = atob(b64 || "");
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Uint32Array(u8.buffer);
+}
+function loadDict() {
+  E = E_FULL = decode(window.DICT_B64);
+  E_AI = window.DICT_AI_B64 ? decode(window.DICT_AI_B64) : E_FULL;
+}
+function find(node, L) {
+  if (node < 0) return -1;
+  for (let i = node; ; i++) {
+    const v = E[i], l = v & 31;
+    if (l === L) return i;
+    if (l > L || (v & 64)) return -1;
+  }
+}
+const childOf = e => { const c = E[e] >>> 7; return c === 0 ? -1 : c; };
+const termOf = e => (E[e] >>> 5) & 1;
+function isWord(arr) {
+  let n = 0, e = -1;
+  for (const L of arr) { e = find(n, L); if (e < 0) return false; n = childOf(e); }
+  return e >= 0 && termOf(e) === 1;
+}
+function toIdx(str) {
+  const s = str.toUpperCase().replace(/ß/g, "SS").replace(/ẞ/g, "SS");
+  const out = [];
+  for (const ch of s) { const i = ALPHA.indexOf(ch); if (i >= 0) out.push(i); }
+  return out;
+}
+const word = arr => arr.map(i => ALPHA[i]).join("");
+
+// ---------- analysis & scoring (shared by player and computer) ----------
+function analyze(g, gb, pl, checkDict) {
+  if (!pl.length) return { error: "" };
+  const tmp = g.slice(), tb = gb.slice(), isNew = new Uint8Array(225);
+  for (const p of pl) {
+    const i = p.r * 15 + p.c;
+    if (tmp[i] >= 0) return { error: "Das Feld ist schon belegt." };
+    tmp[i] = p.l; tb[i] = p.b ? 1 : 0; isNew[i] = 1;
+  }
+  const at = (r, c) => (r < 0 || c < 0 || r > 14 || c > 14) ? -1 : tmp[r * 15 + c];
+  const rows = new Set(pl.map(p => p.r)), cols = new Set(pl.map(p => p.c));
+  let dir;
+  if (pl.length === 1) dir = (at(pl[0].r, pl[0].c - 1) >= 0 || at(pl[0].r, pl[0].c + 1) >= 0) ? 0 : 1;
+  else if (rows.size === 1) dir = 0;
+  else if (cols.size === 1) dir = 1;
+  else return { error: "Alle Steine müssen in einer Reihe oder Spalte liegen." };
+  const dr = dir === 1 ? 1 : 0, dc = dir === 0 ? 1 : 0;
+  const sorted = pl.slice().sort((a, b) => (a.r - b.r) || (a.c - b.c));
+  const first = sorted[0], last = sorted[sorted.length - 1];
+  for (let r = first.r, c = first.c; r <= last.r && c <= last.c; r += dr, c += dc)
+    if (at(r, c) < 0) return { error: "Die Steine müssen ohne Lücke liegen." };
+  const boardEmpty = !g.some(x => x >= 0);
+  if (boardEmpty) {
+    if (!isNew[CENTER]) return { error: "Das erste Wort muss über das Mittelfeld ★ gehen." };
+    if (pl.length < 2) return { error: "Das erste Wort braucht mindestens zwei Buchstaben." };
+  } else {
+    let touches = false;
+    for (const p of pl) for (const [a, b] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const r = p.r + a, c = p.c + b;
+      if (r >= 0 && c >= 0 && r < 15 && c < 15 && g[r * 15 + c] >= 0) touches = true;
+    }
+    if (!touches) return { error: "Das Wort muss an liegende Steine anschließen." };
+  }
+  const words = [];
+  const wordThrough = (r, c, dr, dc) => {
+    while (at(r - dr, c - dc) >= 0) { r -= dr; c -= dc; }
+    const letters = []; let sum = 0, mult = 1;
+    while (at(r, c) >= 0) {
+      const i = r * 15 + c, v = tileValue(tmp[i], tb[i]);
+      letters.push(tmp[i]);
+      if (isNew[i]) { sum += v * LM(PREM[i]); mult *= WM(PREM[i]); } else sum += v;
+      r += dr; c += dc;
+    }
+    return { letters, score: sum * mult };
+  };
+  const main = wordThrough(first.r, first.c, dr, dc);
+  if (main.letters.length >= 2) words.push(main);
+  for (const p of pl) {
+    const w = wordThrough(p.r, p.c, dc, dr);
+    if (w.letters.length >= 2) words.push(w);
+  }
+  if (!words.length) return { error: "Ein Wort braucht mindestens zwei Buchstaben." };
+  let score = words.reduce((s, w) => s + w.score, 0);
+  const bingo = pl.length === 7;
+  if (bingo) score += 50;
+  if (checkDict) {
+    const bad = words.filter(w => !isWord(w.letters)).map(w => word(w.letters));
+    if (bad.length) return { error: "Nicht im Wörterbuch: " + bad.join(", "), words, score, invalid: true };
+  }
+  return { ok: true, words, score, bingo, main: word(main.letters.length >= 2 ? main.letters : words[0].letters) };
+}
+
+// ---------- computer move generation (anchor / cross-check search over the DAWG) ----------
+const ALL = (1 << 29) - 1;
+function generateMoves(g, gb, rackTiles) {
+  const rack = new Int32Array(30);
+  for (const t of rackTiles) rack[t]++;
+  const moves = [];
+  const boardEmpty = !g.some(x => x >= 0);
+  let budget = 400000;
+  for (let dir = 0; dir < 2; dir++) {
+    if (boardEmpty && dir === 1) break;
+    const at = dir === 0 ? (r, c) => g[r * 15 + c] : (r, c) => g[c * 15 + r];
+    const has = (r, c) => r >= 0 && c >= 0 && r < 15 && c < 15 && at(r, c) >= 0;
+    for (let r = 0; r < 15; r++) {
+      const cross = new Int32Array(15);
+      const anchor = new Uint8Array(15);
+      for (let c = 0; c < 15; c++) {
+        if (at(r, c) >= 0) continue;
+        if (has(r - 1, c) || has(r + 1, c) || has(r, c - 1) || has(r, c + 1)) anchor[c] = 1;
+        if (boardEmpty && r === 7 && c === 7) anchor[c] = 1;
+        const up = [], down = [];
+        for (let k = r - 1; k >= 0 && at(k, c) >= 0; k--) up.unshift(at(k, c));
+        for (let k = r + 1; k < 15 && at(k, c) >= 0; k++) down.push(at(k, c));
+        if (!up.length && !down.length) { cross[c] = ALL; continue; }
+        let n = 0, ok = true;
+        for (const L of up) { const e = find(n, L); if (e < 0) { ok = false; break; } n = childOf(e); }
+        let mask = 0;
+        if (ok) for (let L = 0; L < 29; L++) {
+          const e = find(n, L); if (e < 0) continue;
+          if (!down.length) { if (termOf(e)) mask |= 1 << L; continue; }
+          let m = childOf(e), e2 = -1, good = true;
+          for (const D of down) { e2 = find(m, D); if (e2 < 0) { good = false; break; } m = childOf(e2); }
+          if (good && termOf(e2)) mask |= 1 << L;
+        }
+        cross[c] = mask;
+      }
+      const left = [], right = [];
+      let A = 0;
+      const real = (row, col) => dir === 0 ? [row, col] : [col, row];
+      const record = () => {
+        const pl = [];
+        left.forEach((t, i) => { const [rr, cc] = real(r, A - left.length + i); pl.push({ r: rr, c: cc, l: t.l, b: t.b }); });
+        right.forEach(t => { const [rr, cc] = real(r, t.col); pl.push({ r: rr, c: cc, l: t.l, b: t.b }); });
+        const res = analyze(g, gb, pl, false);
+        if (res.ok) moves.push({ pl, score: res.score, word: res.main });
+      };
+      const extend = (node, col, term, placed) => {
+        if (--budget < 0) return;
+        if (col < 15 && at(r, col) < 0) {
+          if (term && col > A && placed > 0) record();
+          if (node < 0) return;
+          for (let i = node; ; i++) {
+            const v = E[i], L = v & 31;
+            if (cross[col] & (1 << L)) {
+              if (rack[L] > 0) { rack[L]--; right.push({ col, l: L, b: 0 }); extend(childOf(i), col + 1, termOf(i), placed + 1); right.pop(); rack[L]++; }
+              if (rack[BLANK] > 0) { rack[BLANK]--; right.push({ col, l: L, b: 1 }); extend(childOf(i), col + 1, termOf(i), placed + 1); right.pop(); rack[BLANK]++; }
+            }
+            if (v & 64) break;
+          }
+        } else if (col < 15) {
+          const e = find(node, at(r, col));
+          if (e >= 0) extend(childOf(e), col + 1, termOf(e), placed);
+        } else if (term && placed > 0) record();
+      };
+      const leftPart = (node, limit) => {
+        extend(node, A, 0, left.length);
+        if (limit <= 0 || node < 0) return;
+        for (let i = node; ; i++) {
+          const v = E[i], L = v & 31;
+          if (rack[L] > 0) { rack[L]--; left.push({ l: L, b: 0 }); leftPart(childOf(i), limit - 1); left.pop(); rack[L]++; }
+          if (rack[BLANK] > 0) { rack[BLANK]--; left.push({ l: L, b: 1 }); leftPart(childOf(i), limit - 1); left.pop(); rack[BLANK]++; }
+          if (v & 64) break;
+        }
+      };
+      for (let c = 0; c < 15; c++) {
+        if (!anchor[c]) continue;
+        A = c;
+        if (c > 0 && at(r, c - 1) >= 0) {
+          let s = c - 1; while (s > 0 && at(r, s - 1) >= 0) s--;
+          let n = 0, ok = true;
+          for (let k = s; k < c; k++) { const e = find(n, at(r, k)); if (e < 0) { ok = false; break; } n = childOf(e); }
+          if (ok) extend(n, c, 0, 0);
+        } else {
+          let lim = 0;
+          for (let k = c - 1; k >= 0 && at(r, k) < 0 && !anchor[k] && lim < rackTiles.length - 1; k--) lim++;
+          leftPart(0, lim);
+        }
+      }
+    }
+  }
+  return moves;
+}
+
+function chooseMove(moves, diff) {
+  if (!moves.length) return null;
+  moves.sort((a, b) => b.score - a.score);
+  const best = moves[0].score;
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  if (diff === "hard") {
+    // best score, mild preference for keeping blanks
+    const top = moves.filter(m => m.score >= best - 2);
+    top.sort((a, b) => (a.pl.filter(p => p.b).length - b.pl.filter(p => p.b).length) || (b.score - a.score));
+    return top[0];
+  }
+  if (diff === "medium") {
+    const band = moves.filter(m => m.score >= best * 0.55 && m.score <= best * 0.85 && m.pl.filter(p => p.b).length === 0);
+    return band.length ? pick(band) : moves[Math.min(moves.length - 1, Math.floor(moves.length * 0.1))];
+  }
+  const easy = moves.filter(m => m.score <= Math.max(8, best * 0.4) && m.word.length <= 5 && !m.pl.some(p => p.b));
+  return easy.length ? pick(easy) : moves[moves.length - 1];
+}
+
+// ---------- game state ----------
+const SAVE_KEY = "wortduell-v1";
+let S = null;          // persisted game
+let pending = [];      // [{id, r, c, l, b}]
+let selected = null;   // rack tile id
+let swapMode = false, swapMarks = new Set();
+let thinking = false;
+
+function newBag() {
+  const bag = [];
+  [...ALPHA].forEach((ch, i) => { for (let k = 0; k < COUNTS_BY[ch]; k++) bag.push(i); });
+  bag.push(BLANK, BLANK);
+  for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+  return bag;
+}
+let nextId = 1;
+function draw(rack, n) { while (rack.length < 7 && S.bag.length && n-- > 0) rack.push({ id: nextId++, l: S.bag.pop() }); }
+function newGame(diff) {
+  S = {
+    board: new Array(225).fill(-1), blanks: new Array(225).fill(0),
+    bag: newBag(), human: [], cpu: [], score: { h: 0, c: 0 },
+    turn: "h", zeroTurns: 0, log: [], over: false, last: [],
+    diff: diff || (S && S.diff) || "medium", nextId: 1
+  };
+  nextId = 1;
+  draw(S.human, 7); draw(S.cpu, 7);
+  pending = []; selected = null; swapMode = false; swapMarks.clear();
+  save();
+}
+function save() { S.nextId = nextId; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+function restore(data) {
+  if (!data || !Array.isArray(data.board) || data.board.length !== 225) return false;
+  S = data; nextId = S.nextId || 1000; return true;
+}
+const grid = () => Int8Array.from(S.board);
+const gridB = () => Uint8Array.from(S.blanks);
+const rackSum = rack => rack.reduce((s, t) => s + VAL[t.l], 0);
+
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const boardEl = $("board"), rackEl = $("rack");
+const cells = [];
+for (let i = 0; i < 225; i++) {
+  const d = document.createElement("div");
+  d.className = "cell " + PREM[i] + (i === CENTER ? " star" : "");
+  d.dataset.cell = i;
+  d.setAttribute("role", "gridcell");
+  boardEl.appendChild(d); cells.push(d);
+}
+const PREM_LABEL = { TW: "3W", DW: "2W", TL: "3B", DL: "2B" };
+
+function tileHTML(l, b, cls) {
+  const ch = ALPHA[l];
+  return `<div class="tile ${cls || ""} ${b ? "blank-letter" : ""}">${ch}${b ? "" : `<span class="v">${VAL[l]}</span>`}</div>`;
+}
+function renderBoard() {
+  const pend = new Map(pending.map(p => [p.r * 15 + p.c, p]));
+  let badgeAt = -1, badge = "";
+  if (pending.length && E && S.turn === "h") {
+    const res = analyze(grid(), gridB(), pending, true);
+    const lastP = pending.slice().sort((a, b) => (b.r - a.r) || (b.c - a.c))[0];
+    badgeAt = lastP.r * 15 + lastP.c;
+    const pos = (lastP.r <= 1 ? " below" : "") + (lastP.c >= 13 ? " edge-r" : lastP.c <= 1 ? " edge-l" : "");
+    badge = res.ok ? `<span class="badge${pos}">+${res.score}</span>` : res.invalid ? `<span class="badge bad${pos}">✗</span>` : "";
+  }
+  const last = new Set(S.last || []);
+  for (let i = 0; i < 225; i++) {
+    const d = cells[i];
+    if (S.board[i] >= 0) d.innerHTML = tileHTML(S.board[i], S.blanks[i], last.has(i) ? "last" : "");
+    else if (pend.has(i)) { const p = pend.get(i); d.innerHTML = tileHTML(p.l, p.b, "pending").replace('class="tile', `data-pid="${p.id}" class="tile`).replace(/<\/div>$/, (i === badgeAt ? badge : "") + "</div>"); }
+    else d.innerHTML = i === CENTER ? "★" : (PREM_LABEL[PREM[i]] || "");
+  }
+}
+function renderRack() {
+  const used = new Set(pending.map(p => p.id));
+  rackEl.innerHTML = "";
+  for (let k = 0; k < 7; k++) {
+    const slot = document.createElement("div"); slot.className = "slot"; slot.dataset.slot = k;
+    const t = S.human[k];
+    if (t && !used.has(t.id)) {
+      const b = document.createElement("button");
+      b.className = "rtile" + (selected === t.id ? " sel" : "") + (swapMarks.has(t.id) ? " mark" : "");
+      b.dataset.tid = t.id;
+      b.setAttribute("aria-label", t.l === BLANK ? "Joker" : ALPHA[t.l] + ", " + VAL[t.l] + " Punkte");
+      b.innerHTML = t.l === BLANK ? "&nbsp;" : `${ALPHA[t.l]}<span class="v">${VAL[t.l]}</span>`;
+      slot.appendChild(b);
+    }
+    rackEl.appendChild(slot);
+  }
+}
+function renderScores() {
+  $("sHuman").textContent = S.score.h; $("sCpu").textContent = S.score.c;
+  $("bagCount").textContent = S.bag.length;
+  $("pHuman").classList.toggle("active", S.turn === "h" && !S.over);
+  $("pCpu").classList.toggle("active", S.turn === "c" && !S.over);
+  $("cpuLabel").textContent = "PC · " + ({ easy: "leicht", medium: "mittel", hard: "schwer" })[S.diff];
+}
+function renderLog() {
+  const ol = $("log");
+  if (!S.log.length) { ol.innerHTML = `<li class="empty" style="background:none;padding:0">Noch keine Züge. Du fängst an.</li>`; return; }
+  ol.innerHTML = S.log.slice(-8).reverse().map(e =>
+    `<li class="${e.who}"><span class="w">${e.who === "h" ? "Du" : "Computer"}: ${e.text}</span><span class="p">${e.pts > 0 ? "+" + e.pts : e.pts === 0 ? "0" : e.pts}</span></li>`).join("");
+}
+function setMsg(text, cls, gain) {
+  const m = $("msg"); m.textContent = text; m.className = "msg " + (cls || "");
+  $("gain").textContent = gain || "";
+}
+function renderStatus() {
+  if (!E) return;
+  if (S.over) { setMsg("Spiel vorbei. Neues Spiel über das Menü."); }
+  else if (S.turn === "c") { setMsg("Computer denkt nach …"); }
+  else if (swapMode) { setMsg(swapMarks.size ? `${swapMarks.size} Stein(e) zum Tauschen markiert` : "Tippe die Steine an, die du tauschen willst."); }
+  else if (!pending.length) { setMsg(S.log.length ? "Du bist dran." : "Du fängst an: Lege ein Wort über das Mittelfeld ★."); }
+  else {
+    const res = analyze(grid(), gridB(), pending, true);
+    if (res.ok) setMsg(res.words.map(w => word(w.letters)).join(" · ") + (res.bingo ? " · Bonus!" : ""), "ok", "+" + res.score);
+    else setMsg(res.error, res.invalid ? "err" : "");
+  }
+}
+function renderButtons() {
+  const myTurn = S.turn === "h" && !S.over && !!E;
+  const res = myTurn && pending.length ? analyze(grid(), gridB(), pending, true) : null;
+  const valid = !!(res && res.ok);
+  $("playBtn").disabled = swapMode ? !(myTurn && swapMarks.size) : !valid;
+  $("playBtn").textContent = swapMode ? "Tauschen" : valid ? `Legen · +${res.score}` : "Legen";
+  $("recallBtn").textContent = swapMode ? "Abbrechen" : "Zurück";
+  $("recallBtn").disabled = !swapMode && !pending.length;
+  $("shuffleBtn").disabled = swapMode;
+  $("swapBtn").disabled = !myTurn || swapMode || S.bag.length < 7;
+  $("passBtn").disabled = !myTurn || swapMode;
+}
+function render() { renderBoard(); renderRack(); renderScores(); renderLog(); renderStatus(); renderButtons(); }
+
+// ---------- player actions ----------
+function placeTile(id, idx, letter) {
+  if (S.board[idx] >= 0 || pending.some(p => p.r * 15 + p.c === idx)) return;
+  const t = S.human.find(t => t.id === id); if (!t) return;
+  const prev = pending.find(p => p.id === id);
+  if (prev) pending = pending.filter(p => p.id !== id);
+  const r = Math.floor(idx / 15), c = idx % 15;
+  if (t.l === BLANK) {
+    if (prev && letter == null) letter = prev.l;
+    if (letter == null) { askBlank(l => placeTile(id, idx, l)); return; }
+    pending.push({ id, r, c, l: letter, b: 1 });
+  } else pending.push({ id, r, c, l: t.l, b: 0 });
+  selected = null; render();
+}
+function unplace(id) { pending = pending.filter(p => p.id !== id); render(); }
+let blankCb = null;
+function askBlank(cb) {
+  blankCb = cb;
+  const box = $("blankLetters");
+  box.innerHTML = [...ALPHA].map((ch, i) => `<button data-l="${i}">${ch}</button>`).join("");
+  $("blankSheet").hidden = false;
+}
+$("blankLetters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-l]"); if (!b) return;
+  $("blankSheet").hidden = true; const cb = blankCb; blankCb = null; cb && cb(+b.dataset.l);
+});
+$("blankCancel").onclick = () => { $("blankSheet").hidden = true; blankCb = null; selected = null; render(); };
+
+function commitPlacement(who, pl, res) {
+  const rack = who === "h" ? S.human : S.cpu;
+  const usedIds = new Set();
+  for (const p of pl) {
+    const i = p.r * 15 + p.c;
+    S.board[i] = p.l; S.blanks[i] = p.b ? 1 : 0;
+    if (p.id != null) usedIds.add(p.id);
+    else { const t = rack.find(t => !usedIds.has(t.id) && (p.b ? t.l === BLANK : t.l === p.l)); usedIds.add(t.id); }
+  }
+  const remaining = rack.filter(t => !usedIds.has(t.id));
+  rack.length = 0; rack.push(...remaining);
+  S.score[who] += res.score;
+  S.last = pl.map(p => p.r * 15 + p.c);
+  S.log.push({ who, text: res.words.map(w => word(w.letters)).join(", ") + (res.bingo ? " (Bonus)" : ""), pts: res.score });
+  S.zeroTurns = 0;
+  draw(rack, 7);
+  if (!rack.length && !S.bag.length) return endGame(who);
+  nextTurn();
+}
+function nextTurn() {
+  S.turn = S.turn === "h" ? "c" : "h";
+  save(); render();
+  if (S.turn === "c") { thinking = true; setTimeout(cpuTurn, 450); }
+}
+function scorelessTurn(who, text) {
+  S.log.push({ who, text, pts: 0 });
+  S.zeroTurns++;
+  if (S.zeroTurns >= 6) return endGame(null);
+  nextTurn();
+}
+function endGame(outWho) {
+  const hLeft = rackSum(S.human), cLeft = rackSum(S.cpu);
+  S.score.h -= hLeft; S.score.c -= cLeft;
+  if (outWho === "h") S.score.h += cLeft;
+  if (outWho === "c") S.score.c += hLeft;
+  S.over = true; S.turn = null;
+  S.log.push({ who: "h", text: "Restbuchstaben", pts: (outWho === "h" ? cLeft : -hLeft) });
+  S.log.push({ who: "c", text: "Restbuchstaben", pts: (outWho === "c" ? hLeft : -cLeft) });
+  pending = []; save(); render(); showEnd();
+}
+function showEnd() {
+  const h = S.score.h, c = S.score.c;
+  $("endTitle").textContent = h > c ? "Gewonnen!" : h < c ? "Der Computer gewinnt" : "Unentschieden";
+  $("endScore").textContent = `${h} : ${c}`;
+  $("endText").textContent = h > c ? `Du liegst ${h - c} Punkte vorn.` : h < c ? `Es fehlen ${c - h} Punkte. Vielleicht eine Stufe leichter?` : "Genau gleich viele Punkte.";
+  $("endSheet").hidden = false;
+}
+
+$("playBtn").onclick = () => {
+  if (S.turn !== "h" || S.over) return;
+  if (swapMode) {
+    const out = S.human.filter(t => swapMarks.has(t.id));
+    S.human = S.human.filter(t => !swapMarks.has(t.id));
+    draw(S.human, out.length);
+    for (const t of out) S.bag.splice(Math.floor(Math.random() * (S.bag.length + 1)), 0, t.l);
+    swapMode = false; swapMarks.clear();
+    return scorelessTurn("h", `${out.length} Stein(e) getauscht`);
+  }
+  const res = analyze(grid(), gridB(), pending, true);
+  if (!res.ok) return;
+  const pl = pending; pending = []; selected = null;
+  commitPlacement("h", pl, res);
+};
+$("recallBtn").onclick = () => {
+  if (swapMode) { swapMode = false; swapMarks.clear(); render(); return; }
+  pending = []; selected = null; render();
+};
+$("shuffleBtn").onclick = () => {
+  const a = S.human;
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  save(); render();
+};
+$("swapBtn").onclick = () => { pending = []; selected = null; swapMode = true; swapMarks.clear(); render(); };
+let passArmed = false;
+$("passBtn").onclick = () => {
+  if (!passArmed) { passArmed = true; $("passBtn").textContent = "Wirklich?"; setTimeout(() => { passArmed = false; $("passBtn").textContent = "Passen"; }, 2500); return; }
+  passArmed = false; $("passBtn").textContent = "Passen";
+  pending = []; selected = null; scorelessTurn("h", "gepasst");
+};
+$("zoomBtn").onclick = () => {
+  const z = $("boardScroll").classList.toggle("zoomed");
+  $("zoomBtn").setAttribute("aria-pressed", z);
+  if (z) { const s = $("boardScroll"); s.scrollLeft = (s.scrollWidth - s.clientWidth) / 2; s.scrollTop = 0; }
+};
+
+// ---------- computer ----------
+function cpuTurn() {
+  if (S.over || S.turn !== "c") { thinking = false; return; }
+  let moves;
+  E = E_AI;
+  try { moves = generateMoves(grid(), gridB(), S.cpu.map(t => t.l)); } finally { E = E_FULL; }
+  const m = chooseMove(moves, S.diff);
+  thinking = false;
+  if (m) {
+    const res = analyze(grid(), gridB(), m.pl, false);
+    return commitPlacement("c", m.pl, res);
+  }
+  if (S.bag.length >= 7) {
+    const keep = [], out = [];
+    for (const t of S.cpu) (t.l === BLANK || (VAL[t.l] === 1 && keep.length < 3) ? keep : out).push(t);
+    S.cpu = keep; draw(S.cpu, out.length);
+    for (const t of out) S.bag.splice(Math.floor(Math.random() * (S.bag.length + 1)), 0, t.l);
+    return scorelessTurn("c", `${out.length} Stein(e) getauscht`);
+  }
+  scorelessTurn("c", "gepasst");
+}
+
+// ---------- pointer: tap and drag ----------
+let drag = null;
+function startDrag(e, kind, id, el) {
+  if (S.turn !== "h" || S.over) return;
+  drag = { kind, id, x: e.clientX, y: e.clientY, moved: false, ghost: null, el, hover: null };
+  try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+}
+document.addEventListener("pointerdown", e => {
+  const rt = e.target.closest(".rtile");
+  if (rt) { startDrag(e, "rack", +rt.dataset.tid, rt); return; }
+  const pt = e.target.closest(".tile.pending");
+  if (pt) { startDrag(e, "pend", +pt.dataset.pid, pt); }
+});
+document.addEventListener("pointermove", e => {
+  if (!drag || swapMode) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+  if (!drag.moved) {
+    drag.moved = true;
+    const t = S.human.find(t => t.id === drag.id);
+    const p = pending.find(p => p.id === drag.id);
+    const g = document.createElement("div"); g.className = "ghost";
+    g.textContent = p ? ALPHA[p.l] : (t.l === BLANK ? "" : ALPHA[t.l]);
+    document.body.appendChild(g); drag.ghost = g;
+    drag.el.style.opacity = ".3";
+  }
+  drag.ghost.style.left = e.clientX + "px"; drag.ghost.style.top = e.clientY + "px";
+  const under = document.elementFromPoint(e.clientX, e.clientY - 30);
+  const cell = under && under.closest("[data-cell]");
+  if (drag.hover && drag.hover !== cell) drag.hover.classList.remove("drop-hover");
+  if (cell) cell.classList.add("drop-hover");
+  drag.hover = cell;
+  e.preventDefault();
+}, { passive: false });
+function endDrag(e) {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.hover) d.hover.classList.remove("drop-hover");
+  if (d.ghost) d.ghost.remove();
+  if (d.el) d.el.style.opacity = "";
+  if (!d.moved) { tap(d); return; }
+  const under = document.elementFromPoint(e.clientX, e.clientY - 30);
+  const cell = under && under.closest("[data-cell]");
+  if (cell) { placeTile(d.id, +cell.dataset.cell); return; }
+  const slot = under && under.closest(".rack");
+  if (slot && d.kind === "pend") { unplace(d.id); return; }
+  if (slot && d.kind === "rack") {
+    const s = under.closest("[data-slot]");
+    if (s) { // reorder within rack
+      const from = S.human.findIndex(t => t.id === d.id), to = Math.min(+s.dataset.slot, S.human.length - 1);
+      const [t] = S.human.splice(from, 1); S.human.splice(to, 0, t); save();
+    }
+  }
+  render();
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", e => { if (drag) { if (drag.ghost) drag.ghost.remove(); if (drag.el) drag.el.style.opacity = ""; if (drag.hover) drag.hover.classList.remove("drop-hover"); drag = null; } });
+function tap(d) {
+  if (d.kind === "rack") {
+    if (swapMode) { swapMarks.has(d.id) ? swapMarks.delete(d.id) : swapMarks.add(d.id); render(); return; }
+    selected = selected === d.id ? null : d.id; render(); return;
+  }
+  if (d.kind === "pend") unplace(d.id);
+}
+boardEl.addEventListener("click", e => {
+  const cell = e.target.closest("[data-cell]"); if (!cell || drag) return;
+  if (e.target.closest(".tile")) return;
+  if (selected != null && S.turn === "h" && !S.over) placeTile(selected, +cell.dataset.cell);
+});
+
+// ---------- menu ----------
+$("menuBtn").onclick = () => { syncDiff(); $("menuSheet").hidden = false; };
+$("menuClose").onclick = () => { $("menuSheet").hidden = true; };
+function syncDiff() { document.querySelectorAll("#diffSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.d === S.diff)); }
+$("diffSeg").addEventListener("click", e => { const b = e.target.closest("button[data-d]"); if (!b) return; S.diff = b.dataset.d; save(); syncDiff(); renderScores(); });
+let newArmed = false;
+$("newGameBtn").onclick = () => {
+  if (!S.over && S.log.length && !newArmed) { newArmed = true; $("newGameBtn").textContent = "Laufendes Spiel verwerfen?"; $("newGameBtn").classList.add("primary"); return; }
+  newArmed = false; $("newGameBtn").textContent = "Neues Spiel"; $("newGameBtn").classList.remove("primary");
+  newGame(S.diff); $("menuSheet").hidden = true; render();
+};
+function doCheck() {
+  const raw = $("checkInput").value.trim(); const idx = toIdx(raw); const r = $("checkRes");
+  if (idx.length < 2) { r.textContent = "Bitte mindestens zwei Buchstaben eingeben."; r.className = "check-res"; return; }
+  const ok = isWord(idx);
+  r.textContent = ok ? `${word(idx)} ist erlaubt.` : `${word(idx)} steht nicht im Wörterbuch.`;
+  r.className = "check-res " + (ok ? "ok" : "err");
+}
+$("checkBtn").onclick = doCheck;
+$("checkInput").addEventListener("keydown", e => { if (e.key === "Enter") doCheck(); });
+$("endNew").onclick = () => { $("endSheet").hidden = true; newGame(S.diff); render(); };
+$("endClose").onclick = () => { $("endSheet").hidden = true; };
+for (const id of ["menuSheet", "endSheet"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
+
+// ---------- boot ----------
+function start(hot) {
+  let data = hot && hot.S;
+  if (!data) { try { data = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) {} }
+  if (!restore(data)) newGame("medium");
+  if (hot && hot.pending) pending = hot.pending;
+  render();
+  setTimeout(() => {
+    try { loadDict(); } catch (e) { setMsg("Das Wörterbuch konnte nicht geladen werden. Lade die Seite neu.", "err"); return; }
+    render();
+    if (S.turn === "c" && !S.over) { thinking = true; setTimeout(cpuTurn, 300); }
+  }, 30);
+}
+window.claude?.hot?.snapshot?.(() => ({ S, pending }));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+function isWordAI(arr) { const keep = E; E = E_AI; try { return isWord(arr); } finally { E = keep; } }
+// random common word of a given length, first letters weighted by tile frequency
+const WEIGHT = [...ALPHA].map(ch => COUNTS_BY[ch]);
+function randomWord(len) {
+  const D = E_AI, out = [];
+  const rec = (node, depth) => {
+    const edges = [];
+    for (let i = node; ; i++) { edges.push([i, Math.pow(Math.random(), 1 / WEIGHT[D[i] & 31])]); if (D[i] & 64) break; }
+    edges.sort((a, b) => b[1] - a[1]);
+    for (const [i] of edges) {
+      out.push(D[i] & 31);
+      if (depth + 1 === len) { if ((D[i] >>> 5) & 1) return true; }
+      else { const c = D[i] >>> 7; if (c && rec(c, depth + 1)) return true; }
+      out.pop();
+    }
+    return false;
+  };
+  return rec(0, 0) ? out.slice() : null;
+}
+function formableWords(counts, minLen, maxLen) {
+  const D = E_AI, out = [], cur = [], cnt = counts.slice();
+  const rec = node => {
+    for (let i = node; ; i++) {
+      const v = D[i], L = v & 31;
+      if (cnt[L] > 0) {
+        cnt[L]--; cur.push(L);
+        if (cur.length >= minLen && ((v >>> 5) & 1)) out.push(cur.slice());
+        const c = v >>> 7;
+        if (c && cur.length < maxLen) rec(c);
+        cur.pop(); cnt[L]++;
+      }
+      if (v & 64) break;
+    }
+  };
+  rec(0);
+  return out;
+}
+function hasWord(counts, minLen, maxLen, full) {
+  const D = full ? E_FULL : E_AI, cnt = counts.slice();
+  const rec = (node, depth) => {
+    for (let i = node; ; i++) {
+      const v = D[i], L = v & 31;
+      if (cnt[L] > 0) {
+        if (depth + 1 >= minLen && ((v >>> 5) & 1)) return true;
+        const c = v >>> 7;
+        if (c && depth + 1 < maxLen) { cnt[L]--; const ok = rec(c, depth + 1); cnt[L]++; if (ok) return true; }
+      }
+      if (v & 64) return false;
+    }
+  };
+  return rec(0, 0);
+}
+window.__wd = { restartClassic: () => { newGame(S.diff); $("endSheet").hidden = true; render(); }, classicInProgress: () => !S.over && S.log.length > 0, hasWord, formableWords, analyze, generateMoves, isWord, isWordAI, randomWord, toIdx, loadDict, ready: () => !!E_AI, get S() { return S; } };
+})();
+</script>
+<script>
+// ---------- Wortschiffe: Schiffe versenken mit Wörtern ----------
+(() => {
+"use strict";
+const W = window.__wd;
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ";
+const SZ = 8, FLEET = [4, 3, 3, 2], MIN_LEN = 2, MAX_LEN = 10;
+const KEY = "wortschiffe-v2", MODE_KEY = "wortduell-mode";
+const $ = id => document.getElementById(id);
+const rc = i => [Math.floor(i / SZ), i % SZ];
+const idx = (r, c) => r * SZ + c;
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let SH = null, mode = "classic";
+let setupSel = 0, horiz = true;
+let sel = [];
+let busy = false;
+let rejected = "";  // the selection that failed the dictionary check on "Feuer!"
+
+// ---------- boards ----------
+// letters drawn like tiles from a bag (Q, X and Y left out so every square stays usable)
+const BAG = "EEEEEEEEEEEEEEENNNNNNNNNSSSSSSSIIIIIIRRRRRRTTTTTTUUUUUUAAAAADDDDHHHHGGGLLLOOOMMMMBBWZCCFFKKPÄJÜVÖ";
+function makeLetters() {
+  return Array.from({ length: 64 }, () => ALPHA.indexOf(BAG[Math.floor(Math.random() * BAG.length)]));
+}
+function shipCells(start, len, h) {
+  const [r, c] = rc(start);
+  if (h ? c + len > SZ : r + len > SZ) return null;
+  return Array.from({ length: len }, (_, k) => h ? idx(r, c + k) : idx(r + k, c));
+}
+function neighbors(i) {
+  const [r, c] = rc(i), out = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && cc >= 0 && rr < SZ && cc < SZ) out.push(idx(rr, cc));
+  }
+  return out;
+}
+function canPlace(ships, cells) {
+  const occ = new Set(); ships.forEach(s => s && s.cells.forEach(c => occ.add(c)));
+  return cells.every(c => !occ.has(c));
+}
+function randomFleet() {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const ships = []; let ok = true;
+    for (const len of FLEET) {
+      let placed = false;
+      for (let t = 0; t < 200 && !placed; t++) {
+        const cells = shipCells(Math.floor(Math.random() * 64), len, Math.random() < 0.5);
+        if (cells && canPlace(ships, cells)) { ships.push({ len, cells }); placed = true; }
+      }
+      if (!placed) { ok = false; break; }
+    }
+    if (ok) return ships;
+  }
+  return null;
+}
+const shipAt = (B, i) => B.ships.findIndex(s => s && s.cells.includes(i));
+const isSunk = (B, s) => s.cells.every(c => B.shots[c]);
+const allSunk = B => B.ships.every(s => isSunk(B, s));
+const wordOf = (B, cells) => cells.map(i => ALPHA[B.letters[i]]).join("");
+
+// ---------- state ----------
+function newShips(diff) {
+  SH = {
+    phase: "setup", diff: diff || (SH && SH.diff) || "medium",
+    h: { letters: makeLetters(), ships: FLEET.map(() => null), shots: new Array(64).fill(0) },
+    c: { letters: makeLetters(), ships: randomFleet(), shots: new Array(64).fill(0) },
+    turn: "h", log: [], lastC: [], winner: null
+  };
+  setupSel = 0; horiz = true; sel = []; busy = false;
+  save();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(SH)); } catch (e) {} }
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(KEY) || "null"); if (d && d.h && d.c && d.h.letters.length === 64) { SH = d; return true; } } catch (e) {}
+  return false;
+}
+
+// ---------- shot squares: wave for water, dot for a hit, capsule once a ship is sunk ----------
+const WAVE = '<svg class="wave" viewBox="0 0 40 12" aria-hidden="true"><path d="M2 6 Q7 1 12 6 T22 6 T32 6 T38 6"/></svg>';
+function shotArt(B, i) {
+  if (!B.shots[i]) return null;
+  const lt = "";
+  const k = shipAt(B, i);
+  if (k < 0) return { cls: "", html: lt + WAVE };
+  const sh = B.ships[k];
+  if (!isSunk(B, sh)) return { cls: "", html: lt + '<span class="hitdot"></span>' };
+  const pos = sh.cells.indexOf(i), h = sh.cells.length < 2 || sh.cells[1] - sh.cells[0] === 1;
+  const part = pos === 0 ? "cap-start" : pos === sh.cells.length - 1 ? "cap-end" : "cap-mid";
+  return { cls: ` cap ${h ? "cap-h" : "cap-v"} ${part}`, html: lt };
+}
+
+// ---------- rendering ----------
+function cellsInto(el, n, cls) {
+  if (el.children.length !== n) {
+    el.innerHTML = "";
+    for (let i = 0; i < n; i++) { const d = document.createElement("div"); d.className = cls; d.dataset.i = i; el.appendChild(d); }
+  }
+  return el.children;
+}
+function fleetHTML(B, showHits) {
+  return B.ships.map(s => {
+    if (!s) return "";
+    const sunk = isSunk(B, s);
+    return `<span class="ship ${sunk ? "sunk" : "hitpart"}" title="${s.len} Felder${sunk ? ", versenkt" : ""}">` +
+      s.cells.map(c => `<i class="${showHits && B.shots[c] ? "h" : ""}"></i>`).join("") + "</span>";
+  }).join("");
+}
+function evalSel() {
+  if (!sel.length) return { msg: "" };
+  const B = SH.c, w = wordOf(B, sel);
+  if (sel.length < MIN_LEN) return { msg: `Mindestens ${MIN_LEN} Buchstaben.` };
+  const fresh = sel.length;
+  if (rejected === sel.join(",")) return { msg: `${w} steht nicht im Wörterbuch. Ändere das Wort: tippe Buchstaben auf dem Brett dazu oder in der Leiste weg.`, err: true, dict: true };
+  return { ok: true, word: w, fresh, msg: "" };
+}
+function render() {
+  if (!SH) return;
+  const setup = SH.phase === "setup";
+  $("shSetup").hidden = !setup; $("shBattle").hidden = setup;
+  $("shFleetH").innerHTML = setup ? FLEET.map(len => `<span class="ship">${"<i></i>".repeat(len)}</span>`).join("") : fleetHTML(SH.h, true);
+  $("shFleetC").innerHTML = fleetHTML(SH.c, false);
+  if (!setup) {
+    const C = SH.c, left = C.ships.filter(sh => !isSunk(C, sh)).length;
+    const icons = C.ships.slice().sort((a, b) => b.len - a.len).map(sh => {
+      const sunk = isSunk(C, sh);
+      return `<span class="ship ${sunk ? "sunk" : ""}" title="${sh.len}er${sunk ? ", versenkt" : ""}">${"<i></i>".repeat(sh.len)}</span>`;
+    }).join("");
+    $("shRemain").innerHTML = `<span>Noch zu versenken</span><span class="ships">${icons}</span><span class="count">${left} von ${C.ships.length}</span>`;
+  }
+  $("shCpuLabel").textContent = "PC · " + ({ easy: "leicht", medium: "mittel", hard: "schwer" })[SH.diff];
+  $("shPH").classList.toggle("active", SH.phase === "battle" && SH.turn === "h");
+  $("shPC").classList.toggle("active", SH.phase === "battle" && SH.turn === "c");
+  setup ? renderSetup() : renderBattle();
+}
+function renderSetup() {
+  const B = SH.h, cs = cellsInto($("shSetupBoard"), 64, "sh-cell");
+  for (let i = 0; i < 64; i++) {
+    cs[i].textContent = ALPHA[B.letters[i]];
+    cs[i].className = "sh-cell " + (shipAt(B, i) >= 0 ? "ship" : "letter");
+  }
+  $("shPick").innerHTML = FLEET.map((len, k) =>
+    `<button data-k="${k}" aria-pressed="${setupSel === k}" class="${B.ships[k] ? "placed" : ""} ${horiz ? "" : "vert"}" aria-label="Schiff mit ${len} Feldern">${"<i></i>".repeat(len)}</button>`).join("");
+  const done = B.ships.every(Boolean);
+  $("shStart").disabled = !done;
+  $("shRotate").textContent = horiz ? "Drehen ↕" : "Drehen ↔";
+  if (!$("shSetupMsg").dataset.err) $("shSetupMsg").textContent = done
+    ? "Alles bereit. Du kannst Schiffe noch verschieben oder durch Antippen drehen."
+    : "Zieh die Schiffe von unten auf dein Brett. Ein gesetztes Schiff tippst du an, um es zu drehen.";
+}
+function renderBattle() {
+  const over = SH.phase === "over";
+  const C = SH.c, H = SH.h;
+  const ev = evalSel(), selSet = new Set(sel);
+  const ce = cellsInto($("shEnemy"), 64, "sh-cell");
+  for (let i = 0; i < 64; i++) {
+    const k = shipAt(C, i); let cls = "letter";
+    if (C.shots[i]) cls = k >= 0 ? (isSunk(C, C.ships[k]) ? "sunk" : "hit") : "miss";
+    else if (over && k >= 0) cls = "reveal";
+    if (selSet.has(i)) cls += " sel" + (ev.err ? " bad" : "");
+    const ord = sel.indexOf(i), art = shotArt(C, i);
+    ce[i].className = "sh-cell " + cls + (art ? art.cls : "");
+    ce[i].innerHTML = (art ? art.html : ALPHA[C.letters[i]]) + (ord >= 0 ? `<span class="ord">${ord + 1}</span>` : "");
+  }
+  const co = cellsInto($("shOwn"), 64, "sh-cell");
+  const recent = new Set(SH.lastC || []);
+  for (let i = 0; i < 64; i++) {
+    const k = shipAt(H, i); let cls = k >= 0 ? "ship" : "letter";
+    if (H.shots[i]) cls = k >= 0 ? (isSunk(H, H.ships[k]) ? "sunk" : "hit") : "miss";
+    if (recent.has(i)) cls += " recent";
+    const art = shotArt(H, i);
+    co[i].className = "sh-cell " + cls + (art ? art.cls : "");
+    co[i].innerHTML = art ? art.html : ALPHA[H.letters[i]];
+  }
+  const m = $("shMsg");
+  const myTurn = !over && SH.turn === "h";
+  const stuck = myTurn && !sel.length && !busy && humanStuck();
+  $("shChips").innerHTML = myTurn && sel.length
+    ? sel.map((i, k) => `<button class="chip" data-k="${k}" aria-label="${ALPHA[C.letters[i]]} entfernen">${ALPHA[C.letters[i]]}</button>`).join("")
+    : `<span class="placeholder">${myTurn ? "Tippe Buchstaben auf dem Brett an, egal wo sie liegen." : over ? "Spiel vorbei." : "Der Computer ist dran."}</span>`;
+  $("shBar").classList.toggle("bad", !!(myTurn && ev.dict));
+  if (over) { m.textContent = SH.stalemate ? "Spiel vorbei: Keiner konnte mehr ein Wort bilden." : SH.winner === "h" ? "Gewonnen! Alle Schiffe des Computers sind versenkt." : "Der Computer hat alle deine Schiffe versenkt. Gestreift: wo seine übrigen Schiffe lagen."; m.className = "msg sh-note"; $("shGain").textContent = ""; }
+  else if (SH.turn === "c") { m.textContent = "Computer sucht ein Wort …"; m.className = "msg sh-note"; $("shGain").textContent = ""; }
+  else {
+    m.textContent = ev.msg; m.className = "msg sh-note " + (ev.err ? "err" : "");
+    $("shGain").textContent = ev.ok ? `${ev.fresh} ${ev.fresh === 1 ? "Schuss" : "Schüsse"}` : "";
+  }
+  $("shFire").disabled = !(stuck || (ev.ok && SH.turn === "h" && !over && !busy));
+  $("shFire").textContent = stuck ? "Passen" : ev.ok ? `Feuer! · ${ev.fresh}` : "Feuer!";
+  if (stuck) { m.textContent = "Aus den übrigen Buchstaben lässt sich kein Wort mehr bilden. Du musst passen."; m.className = "msg sh-note"; }
+  $("shCancel").disabled = !sel.length;
+  $("shBack").disabled = !sel.length;
+  const lastC = [...SH.log].reverse().find(e => e.who === "c");
+  $("shLast").innerHTML = lastC ? `<b>${lastC.word}</b>: ${resultText(lastC)}` : "Noch keiner.";
+  const ol = $("shLog");
+  ol.innerHTML = SH.log.length ? SH.log.slice(-10).reverse().map(e =>
+    `<li class="${e.who}"><span class="w">${e.who === "h" ? "Du" : "Computer"}: ${e.word}</span><span class="p">${resultText(e)}</span></li>`).join("")
+    : `<li class="empty" style="background:none;padding:0">Du schießt zuerst.</li>`;
+}
+function resultText(e) {
+  if (e.pass) return "gepasst";
+  let t = e.hits ? `${e.hits} ${e.hits === 1 ? "Treffer" : "Treffer"}` : "Wasser";
+  if (e.sunk && e.sunk.length) t += " · versenkt!";
+  return t;
+}
+
+// ---------- shooting ----------
+function fire(target, cells, who) {
+  const B = SH[target];
+  const before = B.ships.map(s => isSunk(B, s));
+  let hits = 0;
+  for (const c of cells) if (!B.shots[c]) { B.shots[c] = 1; if (shipAt(B, c) >= 0) hits++; }
+  const sunk = B.ships.filter((s, k) => !before[k] && isSunk(B, s)).map(s => s.len);
+  SH.log.push({ who, word: wordOf(B, cells), hits, sunk });
+  if (allSunk(B)) { SH.phase = "over"; SH.winner = who; }
+}
+function endIfOver() {
+  if (SH.phase !== "over") return false;
+  save(); render();
+  $("shEndTitle").textContent = SH.winner === "h" ? "Gewonnen!" : SH.winner === "c" ? "Verloren" : "Unentschieden";
+  const shotsH = SH.c.shots.filter(Boolean).length, shotsC = SH.h.shots.filter(Boolean).length;
+  const hitsOf = B => B.shots.filter((v, i) => v && shipAt(B, i) >= 0).length;
+  if (SH.stalemate) $("shEndText").textContent = `Keiner konnte mehr ein Wort bilden. Treffer: du ${hitsOf(SH.c)}, Computer ${hitsOf(SH.h)}.`;
+  else $("shEndText").textContent = SH.winner === "h"
+    ? `Du hast die ganze Flotte mit ${SH.log.filter(e => e.who === "h").length} Wörtern versenkt (${shotsH} Felder beschossen).`
+    : `Der Computer war schneller: ${SH.log.filter(e => e.who === "c").length} Wörter, ${shotsC} Felder beschossen.`;
+  const C = SH.c, missed = C.ships.some(sh => !isSunk(C, sh));
+  $("shEndReveal").hidden = !missed;
+  if (missed) {
+    const cs = cellsInto($("shEndBoard"), 64, "sh-cell");
+    for (let i = 0; i < 64; i++) {
+      const k = shipAt(C, i); let cls = "letter";
+      if (k >= 0) cls = C.shots[i] ? (isSunk(C, C.ships[k]) ? "sunk" : "hit") : "reveal";
+      else if (C.shots[i]) cls = "miss";
+      const art = shotArt(C, i);
+      cs[i].className = "sh-cell " + cls + (art ? art.cls : "");
+      cs[i].innerHTML = art ? art.html : ALPHA[C.letters[i]];
+    }
+  }
+  $("shEndSheet").hidden = false;
+  return true;
+}
+function unshotCounts(B) { const c = new Array(30).fill(0); B.letters.forEach((l, i) => { if (!B.shots[i]) c[l]++; }); return c; }
+let stuckKey = "", stuckVal = false;
+function humanStuck() {
+  const key = SH.c.shots.join("");
+  if (key !== stuckKey) { stuckKey = key; stuckVal = !W.hasWord(unshotCounts(SH.c), MIN_LEN, MAX_LEN, true); }
+  return stuckVal;
+}
+// both sides passed in a row: more hits wins
+function passAndCheck(who) {
+  SH.log.push({ who, word: "–", pass: true });
+  const n = SH.log.length;
+  if (n >= 2 && SH.log[n - 2].pass) {
+    const hits = B => B.shots.filter((v, i) => v && shipAt(B, i) >= 0).length;
+    const h = hits(SH.c), c = hits(SH.h);
+    SH.phase = "over"; SH.winner = h > c ? "h" : c > h ? "c" : null; SH.stalemate = true;
+    return true;
+  }
+  return false;
+}
+$("shFire").onclick = () => {
+  if (SH.turn === "h" && SH.phase === "battle" && !sel.length && !busy && humanStuck()) {
+    if (passAndCheck("h")) { endIfOver(); return; }
+    SH.turn = "c"; save(); render(); busy = true; setTimeout(cpuTurn, 700); return;
+  }
+  const ev = evalSel();
+  if (!ev.ok || SH.turn !== "h" || SH.phase !== "battle") return;
+  if (!W.isWord(sel.map(i => SH.c.letters[i]))) { rejected = sel.join(","); render(); return; }
+  fire("c", sel, "h"); sel = []; rejected = "";
+  const e = SH.log[SH.log.length - 1];
+  if (SH.phase === "over") { save(); render(); popHit(e, "h").then(endIfOver); return; }
+  SH.turn = "c"; save(); render();
+  busy = true; popHit(e, "h").then(() => setTimeout(cpuTurn, 700));
+};
+$("shCancel").onclick = () => { sel = []; render(); };
+$("shChips").addEventListener("click", e => {
+  const b = e.target.closest(".chip[data-k]"); if (!b || SH.turn !== "h" || busy) return;
+  sel.splice(+b.dataset.k, 1); render();
+});
+
+// ---------- hit popup ----------
+let popDone = null, popTimer = 0;
+function closePop() {
+  clearTimeout(popTimer); $("shPop").hidden = true;
+  const d = popDone; popDone = null; d && d();
+}
+function popHit(e, who) {
+  if (!e || !e.hits) return Promise.resolve();
+  const sunk = e.sunk && e.sunk.length;
+  $("shPopCard").className = "pop-card " + (who === "h" ? "mine" : "theirs");
+  $("shPopNum").textContent = e.hits;
+  $("shPopTitle").textContent = who === "h" ? (sunk ? "Versenkt!" : "Treffer!") : (sunk ? "Dein Schiff ist versenkt" : "Du wurdest getroffen");
+  const fields = `${e.hits} ${e.hits === 1 ? "Feld" : "Felder"}`;
+  const ships = sunk ? ` Ein Schiff mit ${e.sunk.join(" und ")} Feldern ist versenkt.` : "";
+  $("shPopText").textContent = who === "h" ? `${e.word} trifft ${fields}.${ships}` : `Der Computer legte ${e.word} und trifft ${fields}.${ships}`;
+  $("shPop").hidden = false;
+  return new Promise(res => { popDone = res; popTimer = setTimeout(closePop, sunk ? 2600 : 2000); });
+}
+$("shPop").addEventListener("click", closePop);
+
+// ---------- computer ----------
+function cpuTurn() {
+  busy = false;
+  if (!SH || SH.phase !== "battle" || SH.turn !== "c") return;
+  const B = SH.h;
+  const counts = unshotCounts(B);
+  const words = W.formableWords(counts, MIN_LEN, MAX_LEN);
+  const byLetter = {};
+  B.letters.forEach((l, i) => { if (!B.shots[i]) (byLetter[l] = byLetter[l] || []).push(i); });
+  if (!words.length) {
+    if (passAndCheck("c")) { endIfOver(); return; }
+    SH.turn = "h"; save(); render(); return;
+  }
+  // probability map: where can the remaining ships still be?
+  const sunkCells = new Set(B.ships.filter(s => isSunk(B, s)).flatMap(s => s.cells));
+  const openHit = i => B.shots[i] && shipAt(B, i) >= 0 && !sunkCells.has(i);
+  const miss = i => B.shots[i] && shipAt(B, i) < 0;
+  const dens = new Array(64).fill(0);
+  for (const s of B.ships) {
+    if (isSunk(B, s)) continue;
+    for (let start = 0; start < 64; start++) for (const h of [true, false]) {
+      const cells = shipCells(start, s.len, h);
+      if (!cells || cells.some(i => miss(i) || sunkCells.has(i))) continue;
+      const k = cells.filter(openHit).length;
+      const w = k ? 1 + 40 * k : 1;
+      for (const i of cells) if (!B.shots[i]) dens[i] += w;
+    }
+  }
+  const smart = SH.diff !== "easy";
+  // give each letter of a word the most promising square that carries it
+  const assign = w => {
+    const used = new Set(), run = []; let v = 0, fresh = 0;
+    for (const L of w) {
+      let best = -1, bv = -1;
+      for (const i of byLetter[L]) {
+        if (used.has(i)) continue;
+        const val = B.shots[i] ? -1 : (smart ? dens[i] : 1) + Math.random() * 0.3;
+        if (val > bv) { bv = val; best = i; }
+      }
+      used.add(best); run.push(best);
+      if (!B.shots[best]) { fresh++; v += smart ? dens[best] : 1; }
+    }
+    return { run, v: v + Math.random() * 0.5, fresh };
+  };
+  let scored;
+  if (smart) scored = words.map(assign).filter(x => x.fresh > 0).sort((a, b) => b.v - a.v);
+  else { scored = []; for (let t = 0; t < 60 && !scored.length; t++) { const x = assign(words[Math.floor(Math.random() * words.length)]); if (x.fresh) scored.push(x); } }
+  if (!scored.length) { SH.log.push({ who: "c", word: "–", pass: true }); SH.turn = "h"; save(); render(); return; }
+  let pick;
+  if (SH.diff === "hard") pick = scored[0];
+  else if (SH.diff === "medium") pick = scored[Math.floor(Math.random() * Math.min(10, scored.length))];
+  else pick = scored[0];
+  fire("h", pick.run, "c");
+  SH.lastC = pick.run;
+  const e = SH.log[SH.log.length - 1];
+  if (SH.phase === "over") { save(); render(); popHit(e, "c").then(endIfOver); return; }
+  SH.turn = "h"; save(); render();
+  popHit(e, "c");
+}
+
+// ---------- input: enemy board (tap letters in order) ----------
+$("shEnemy").addEventListener("click", e => {
+  const c = e.target.closest(".sh-cell");
+  if (!c || SH.phase !== "battle" || SH.turn !== "h" || busy) return;
+  const i = +c.dataset.i, k = sel.indexOf(i);
+  if (SH.c.shots[i]) return;
+  if (k >= 0) sel.splice(k, 1);
+  else if (sel.length < MAX_LEN) sel.push(i);
+  else { render(); $("shMsg").textContent = `Höchstens ${MAX_LEN} Buchstaben pro Wort.`; $("shMsg").className = "msg err"; return; }
+  render();
+});
+$("shBack").onclick = () => { sel.pop(); render(); };
+
+// ---------- input: setup (drag ships onto the board, tap a placed ship to turn it) ----------
+function setupMsg(text) { const m = $("shSetupMsg"); if (text) { m.textContent = text; m.dataset.err = "1"; m.className = "msg err"; } else { delete m.dataset.err; m.className = "msg"; } }
+const isH = s => s.cells.length < 2 || s.cells[1] - s.cells[0] === 1;
+function fitStart(cell, len, h, grab) {
+  let [r, c] = rc(cell);
+  if (h) c -= grab; else r -= grab;
+  r = Math.max(0, Math.min(r, h ? SZ - 1 : SZ - len));
+  c = Math.max(0, Math.min(c, h ? SZ - len : SZ - 1));
+  return idx(r, c);
+}
+const clearPreview = () => document.querySelectorAll("#shSetupBoard .preview").forEach(e => e.classList.remove("preview", "bad"));
+let sdrag = null;
+document.addEventListener("pointerdown", e => {
+  if (!SH || SH.phase !== "setup" || mode !== "ships") return;
+  const pick = e.target.closest("#shPick button[data-k]");
+  const cell = e.target.closest("#shSetupBoard .sh-cell");
+  let k, h = horiz, grab = 0;
+  if (pick) { k = +pick.dataset.k; if (SH.h.ships[k]) h = isH(SH.h.ships[k]); }
+  else if (cell) { const i = +cell.dataset.i; k = shipAt(SH.h, i); if (k < 0) return; h = isH(SH.h.ships[k]); grab = SH.h.ships[k].cells.indexOf(i); }
+  else return;
+  sdrag = { k, h, grab, x: e.clientX, y: e.clientY, moved: false, fromBoard: !!cell, prev: SH.h.ships[k], ghost: null, target: null };
+  e.preventDefault();
+});
+document.addEventListener("pointermove", e => {
+  if (!sdrag) return;
+  if (!sdrag.moved && Math.hypot(e.clientX - sdrag.x, e.clientY - sdrag.y) < 6) return;
+  if (!sdrag.moved) {
+    sdrag.moved = true; setupMsg("");
+    SH.h.ships[sdrag.k] = null; render();
+    sdrag.size = $("shSetupBoard").children[0].getBoundingClientRect().width;
+    const g = document.createElement("div");
+    g.className = "ship-ghost" + (sdrag.h ? "" : " vert");
+    g.style.setProperty("--s", sdrag.size + "px");
+    g.innerHTML = "<i></i>".repeat(FLEET[sdrag.k]);
+    document.body.appendChild(g); sdrag.ghost = g;
+  }
+  const s = sdrag.size, step = s + 3;
+  const lift = e.pointerType === "touch" ? s : 0;   // keep the ship visible above the finger
+  const px = e.clientX, py = e.clientY - lift;
+  const offX = sdrag.h ? sdrag.grab * step + s / 2 : s / 2;
+  const offY = sdrag.h ? s / 2 : sdrag.grab * step + s / 2;
+  sdrag.ghost.style.left = (px - offX) + "px"; sdrag.ghost.style.top = (py - offY) + "px";
+  clearPreview(); sdrag.target = null;
+  const el = document.elementFromPoint(px, py), c = el && el.closest("#shSetupBoard .sh-cell");
+  if (c) {
+    const len = FLEET[sdrag.k], cells = shipCells(fitStart(+c.dataset.i, len, sdrag.h, sdrag.grab), len, sdrag.h);
+    const ok = canPlace(SH.h.ships, cells);
+    for (const i of cells) $("shSetupBoard").children[i].classList.add("preview", ...(ok ? [] : ["bad"]));
+    if (ok) sdrag.target = cells;
+  }
+  e.preventDefault();
+}, { passive: false });
+function endShipDrag(cancel) {
+  if (!sdrag) return;
+  const d = sdrag; sdrag = null;
+  if (d.ghost) d.ghost.remove();
+  clearPreview();
+  if (!d.moved) { if (!cancel) tapShip(d); return; }
+  SH.h.ships[d.k] = d.target && !cancel ? { len: FLEET[d.k], cells: d.target } : d.prev;
+  if (!d.target && !cancel) setupMsg(d.prev ? "Dort ist kein Platz. Das Schiff liegt wieder an seiner alten Stelle." : "Zieh das Schiff auf ein freies Stück deines Bretts.");
+  save(); render();
+}
+function tapShip(d) {
+  const s = SH.h.ships[d.k];
+  if (!d.fromBoard) { setupMsg(s ? "Zieh das Schiff an eine andere Stelle oder tippe es auf dem Brett an, um es zu drehen." : "Zieh das Schiff auf dein Brett."); render(); return; }
+  const len = s.len, h = !isH(s);
+  const cells = shipCells(fitStart(s.cells[0], len, h, 0), len, h);
+  const others = SH.h.ships.map((x, j) => j === d.k ? null : x);
+  if (!canPlace(others, cells)) { setupMsg("Zum Drehen ist dort kein Platz."); render(); return; }
+  setupMsg(""); SH.h.ships[d.k] = { len, cells }; save(); render();
+}
+document.addEventListener("pointerup", () => endShipDrag(false));
+document.addEventListener("pointercancel", () => endShipDrag(true));
+$("shRotate").onclick = () => { horiz = !horiz; setupMsg(""); render(); };
+$("shRandom").onclick = () => { SH.h.ships = randomFleet(); setupSel = -1; setupMsg(""); save(); render(); };
+$("shClear").onclick = () => { SH.h.ships = FLEET.map(() => null); setupSel = 0; setupMsg(""); save(); render(); };
+$("shStart").onclick = () => {
+  if (!SH.h.ships.every(Boolean)) return;
+  SH.phase = "battle"; SH.turn = "h"; sel = []; save(); render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ---------- menu, end, mode switch ----------
+function syncDiff() { document.querySelectorAll("#shDiffSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.d === SH.diff)); }
+$("shDiffSeg").addEventListener("click", e => { const b = e.target.closest("button[data-d]"); if (!b) return; SH.diff = b.dataset.d; save(); syncDiff(); render(); });
+let newArmed = false;
+$("shNewBtn").onclick = () => {
+  if (SH.phase === "battle" && SH.log.length && !newArmed) { newArmed = true; $("shNewBtn").textContent = "Laufendes Spiel verwerfen?"; $("shNewBtn").classList.add("primary"); return; }
+  newArmed = false; $("shNewBtn").textContent = "Neues Spiel"; $("shNewBtn").classList.remove("primary");
+  newShips(SH.diff); $("shMenuSheet").hidden = true; render();
+};
+$("shMenuClose").onclick = () => { $("shMenuSheet").hidden = true; };
+$("shEndNew").onclick = () => { $("shEndSheet").hidden = true; newShips(SH.diff); render(); };
+$("shEndClose").onclick = () => { $("shEndSheet").hidden = true; };
+for (const id of ["shMenuSheet", "shEndSheet"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
+
+const classicMenu = $("menuBtn").onclick;
+$("menuBtn").onclick = e => {
+  if (mode === "ships") { if (SH) { syncDiff(); $("shMenuSheet").hidden = false; } }
+  else classicMenu(e);
+};
+function setMode(m) {
+  mode = m;
+  try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
+  $("modeClassic").hidden = m !== "classic";
+  $("modeShips").hidden = m !== "ships";
+  document.querySelectorAll("#modes button").forEach(b => b.setAttribute("aria-selected", b.dataset.mode === m));
+  if (m === "ships") boot();
+}
+$("modes").addEventListener("click", e => { const b = e.target.closest("button[data-mode]"); if (b) setMode(b.dataset.mode); });
+
+function boot() {
+  if (SH) { render(); return; }
+  if (!W.ready()) { $("shSetupMsg").textContent = "Wörterbuch wird geladen …"; setTimeout(boot, 100); return; }
+  if (!load()) newShips("medium");
+  render();
+  if (SH.phase === "battle" && SH.turn === "c") { busy = true; setTimeout(cpuTurn, 600); }
+}
+// restart button in the header: asks once if a game is running, then starts over in the current mode
+let restartArmed = 0;
+$("restartBtn").onclick = () => {
+  const btn = $("restartBtn");
+  const running = mode === "ships" ? !!(SH && SH.phase === "battle" && SH.log.length) : W.classicInProgress();
+  if (running && !restartArmed) {
+    btn.textContent = "Sicher?"; btn.classList.add("armed");
+    restartArmed = setTimeout(() => { restartArmed = 0; btn.textContent = "Neu starten"; btn.classList.remove("armed"); }, 3000);
+    return;
+  }
+  clearTimeout(restartArmed); restartArmed = 0; btn.textContent = "Neu starten"; btn.classList.remove("armed");
+  if (mode === "ships") { if (!SH) return; newShips(SH.diff); $("shEndSheet").hidden = true; $("shPop").hidden = true; render(); }
+  else W.restartClassic();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+let startMode = "classic";
+try { startMode = localStorage.getItem(MODE_KEY) || "classic"; } catch (e) {}
+setMode(startMode === "ships" ? "ships" : "classic");
+window.__ws = { get SH() { return SH; }, cpuTurn, render, setSel: s => { sel = s; render(); } };
+})();
+</script>
+
+</body>
+</html>
