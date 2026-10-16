@@ -1,0 +1,622 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mail-Routing-Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: Posteingang links, Detail rechts (wie ein Mail-Client), darüber Kennzahlen, darunter Business Case und eigener Test. */
+:root{
+  --bg:#f5f4fa; --surface:#ffffff; --ink:#1c1b2e; --muted:#62607e; --line:#e3e1ef;
+  --accent:#5656d4; --accent-ink:#ffffff; --accent-soft:#ebeafc;
+  --ok:#2a8a56; --bad:#c0443c; --warn:#9a7419; --rule:#3f7f93;
+  --t-vertrag:#5656d4; --t-forderung:#b5651d; --t-rueckgabe:#3f7f93; --t-service:#2a8a56; --t-beschwerde:#c0443c;
+  --font-display:"Sora", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-num:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13121d; --surface:#1c1b2a; --ink:#ecebf7; --muted:#a09ebd; --line:#2f2d44;
+    --accent:#9191f6; --accent-ink:#15142a; --accent-soft:#27264a;
+    --ok:#5cc58a; --bad:#ec776e; --warn:#d6a843; --rule:#6fc0d6;
+    --t-vertrag:#9191f6; --t-forderung:#f0a35e; --t-rueckgabe:#6fc0d6; --t-service:#5cc58a; --t-beschwerde:#ec776e;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13121d; --surface:#1c1b2a; --ink:#ecebf7; --muted:#a09ebd; --line:#2f2d44;
+  --accent:#9191f6; --accent-ink:#15142a; --accent-soft:#27264a;
+  --ok:#5cc58a; --bad:#ec776e; --warn:#d6a843; --rule:#6fc0d6;
+  --t-vertrag:#9191f6; --t-forderung:#f0a35e; --t-rueckgabe:#6fc0d6; --t-service:#5cc58a; --t-beschwerde:#ec776e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:28px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
+h1{font-size:clamp(1.6rem,3.2vw,2.2rem);font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.05rem;font-weight:600}
+h3{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+p{margin:0}
+.eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-weight:600}
+.lede{color:var(--muted);max-width:66ch;margin-top:6px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+.top > div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;font-weight:600;font-size:.9rem;border-radius:8px;border:1px solid transparent;padding:8px 14px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+button:hover{filter:brightness(1.07)}
+button:disabled{opacity:.55;cursor:default;filter:none}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.ghost:hover:not(:disabled){background:var(--accent-soft);filter:none}
+button.small{font-size:.8rem;padding:4px 10px;border-radius:6px}
+.note{font-size:.9rem;color:var(--muted);background:var(--accent-soft);border-radius:8px;padding:8px 12px}
+.note strong{color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel-h{display:flex;flex-direction:column;gap:2px}
+.panel-h p{color:var(--muted);font-size:.88rem}
+.panel-h.row{flex-direction:row;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.panel-h.row > div{display:flex;flex-direction:column;gap:2px}
+.progress{display:flex;align-items:center;gap:10px;font-size:.88rem;color:var(--muted)}
+.progress .track{width:160px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.progress .track i{display:block;height:100%;background:var(--accent);transition:width .3s}
+
+/* Kennzahlen */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi .v{font-family:var(--font-display);font-size:1.7rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .l{font-size:.85rem;color:var(--muted)}
+.kpi .s{font-size:.78rem;color:var(--muted);font-family:var(--font-num)}
+
+/* Posteingang + Detail */
+.mailgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start}
+@media (max-width:900px){.mailgrid{grid-template-columns:minmax(0,1fr)}}
+.inbox{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:780px;overflow-y:auto}
+.inbox li{display:flex;flex-direction:column;gap:3px;padding:10px 10px;border-top:1px solid var(--line);cursor:pointer;border-radius:6px}
+.inbox li:first-child{border-top:0}
+.inbox li:hover{background:var(--accent-soft)}
+.inbox li.sel{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.mrow{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.mfrom{font-weight:600;font-size:.9rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mnum{font-family:var(--font-num);font-size:.75rem;color:var(--muted);flex:none}
+.msubj{font-size:.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mprev{font-size:.82rem;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mtags{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:2px}
+.chip{font-size:.74rem;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.chip.t{color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent)}
+.chip.hoch{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.chip.mittel{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.chip.niedrig{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.chip.man{color:var(--rule);background:color-mix(in srgb,var(--rule) 13%,transparent)}
+.chip.pending{color:var(--muted);border:1px dashed var(--line);background:transparent}
+.mark{font-family:var(--font-num);font-size:.78rem;font-weight:500}
+.mark.ok{color:var(--ok)} .mark.bad{color:var(--bad)}
+
+.detail{position:sticky;top:calc(12px + env(safe-area-inset-top,0px))}
+.dhead{display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.dhead .from{font-size:.85rem;color:var(--muted)}
+.dhead .subj{font-family:var(--font-display);font-weight:600;font-size:1.05rem}
+.dbody{white-space:pre-wrap;font-size:.92rem;max-width:72ch;background:var(--bg);border-radius:8px;padding:12px 14px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.field .v{font-size:.92rem}
+.cmp{font-size:.78rem;font-family:var(--font-num)}
+.cmp.ok{color:var(--ok)} .cmp.bad{color:var(--bad)}
+.summary{font-size:.92rem}
+.rules{display:flex;flex-direction:column;gap:4px}
+.rulehit{font-size:.84rem;color:var(--rule);background:color-mix(in srgb,var(--rule) 9%,transparent);border-radius:6px;padding:6px 10px}
+.draft{display:flex;flex-direction:column;gap:6px}
+.draft pre{white-space:pre-wrap;font-family:var(--font-body);font-size:.9rem;margin:0;border:1px solid var(--line);border-radius:8px;padding:12px 14px;max-width:72ch}
+.blocked{font-size:.88rem;color:var(--rule);border:1px dashed var(--rule);border-radius:8px;padding:10px 12px}
+.why{font-size:.84rem;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:28px 12px}
+.busy{color:var(--muted);font-style:italic;font-size:.9rem}
+
+/* Business Case + Verteilung */
+.grid2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px}
+@media (max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 16px}
+.inp{display:flex;flex-direction:column;gap:4px}
+.inp label{font-weight:600;font-size:.9rem}
+.inp small{color:var(--muted);font-size:.78rem}
+.inp input[type=number]{font:inherit;font-family:var(--font-num);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+.inp input[type=range]{width:100%;accent-color:var(--accent)}
+.inp output{font-family:var(--font-num);font-size:.85rem;color:var(--accent)}
+.calc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;font-size:.92rem;border-top:1px solid var(--line);padding-top:12px}
+.calc span:nth-child(even){font-family:var(--font-num);text-align:right;font-variant-numeric:tabular-nums}
+.calc .tot{font-weight:600;border-top:1px solid var(--line);padding-top:6px}
+.calc .neg{color:var(--bad)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.barrow{display:grid;grid-template-columns:150px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:.88rem}
+.barrow .tr{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.barrow .tr i{display:block;height:100%;border-radius:5px}
+.barrow .n{font-family:var(--font-num);text-align:right}
+@media (max-width:480px){.barrow{grid-template-columns:110px minmax(0,1fr) 30px}}
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;min-height:130px;resize:vertical}
+.rulelist{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+footer{color:var(--muted);font-size:.85rem;max-width:80ch;display:flex;flex-direction:column;gap:4px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:.9rem;box-shadow:0 6px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">KI-Use-Case-Lab · Prototyp 1</p>
+      <h1>Mail-Routing-Lab</h1>
+      <p class="lede">Claude liest eingehende Kundenmails, erkennt Anliegen, Team, Dringlichkeit und Stimmung und schreibt einen Antwortentwurf. Feste Regeln sichern kritische Fälle ab. Ein Abgleich mit der richtigen Lösung zeigt, wie gut das funktioniert.</p>
+    </div>
+    <div class="actions">
+      <span class="progress" id="progress" hidden><span class="track"><i id="progBar" style="width:0%"></i></span><span id="progText"></span></span>
+      <button id="btnRun">Alle 20 Mails klassifizieren</button>
+      <button id="btnReset" class="ghost">Ergebnisse löschen</button>
+    </div>
+  </header>
+
+  <p class="note" id="aiNote" hidden></p>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="mailgrid">
+    <div class="panel">
+      <div class="panel-h"><h2>Posteingang</h2><p>20 fiktive Mails an die Lumen Mobility Leasing GmbH, darunter bewusst knifflige Fälle</p></div>
+      <ul class="inbox" id="inbox"></ul>
+    </div>
+    <div class="panel detail" id="detail"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="panel-h"><h2>Business Case</h2><p>Was das Routing pro Monat spart, auf Basis der gemessenen Trefferquote</p></div>
+      <div class="inputs">
+        <div class="inp"><label for="inMails">Mails pro Monat</label><input type="number" id="inMails" min="0" step="100"></div>
+        <div class="inp"><label for="inMin">Minuten pro Mail</label><input type="number" id="inMin" min="0" step="0.5"><small>manuelles Lesen und Zuordnen</small></div>
+        <div class="inp"><label for="inConf">Mindest-Sicherheit <output id="outConf"></output></label><input type="range" id="inConf" min="50" max="95" step="5"><small>darunter prüft ein Mensch</small></div>
+      </div>
+      <div class="calc" id="calc"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Verteilung nach Team</h2><p>Wohin Claude die Mails geroutet hat</p></div>
+      <div class="bars" id="bars"></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="panel-h"><h2>Eigene Mail testen</h2><p>Schreib eine Mail oder füge eine anonymisierte ein. Keine echten Kundendaten.</p></div>
+      <label for="ownSubj" class="inp"><span style="font-weight:600;font-size:.9rem">Betreff</span><input type="text" id="ownSubj" placeholder="z. B. Frage zu meiner Rate" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px"></label>
+      <textarea id="ownBody" aria-label="Text der Mail" placeholder="Guten Tag, ..."></textarea>
+      <div class="actions"><button id="btnOwn">Zum Posteingang hinzufügen und klassifizieren</button></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Feste Regeln</h2><p>Laufen nach Claude und überschreiben das Ergebnis. So bleiben kritische Fälle beim Menschen, egal was die KI meint.</p></div>
+      <ol class="rulelist">
+        <li>Rechtliche Themen (Anwalt, Klage, Gericht, Insolvenz, DSGVO-Auskunft, Verbraucherzentrale): immer manuell prüfen, kein Antwortentwurf.</li>
+        <li>Kündigungsandrohung oder ausdrückliche Beschwerde: Dringlichkeit immer hoch.</li>
+        <li>Sicherheit von Claude unter der Mindest-Sicherheit: manuell prüfen.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    <span>Alle Mails, Namen und Firmen sind erfunden. Die „richtige Lösung“ je Mail ist eine fachliche Einschätzung und dient als Prüfmaßstab.</span>
+    <span>Jede Klassifizierung läuft live über Claude und nutzt das Claude-Konto der Person, die die Seite bedient. Ergebnisse bleiben nur in diesem Browser.</span>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const TEAMS = {
+  vertrag:{l:'Vertragsmanagement', c:'--t-vertrag', d:'Vertragsänderungen, Laufzeit, Kilometer, Vertragsübernahme, vorzeitiges Vertragsende, Auslandsnutzung'},
+  forderung:{l:'Forderungsmanagement', c:'--t-forderung', d:'Rechnungen, Zahlungen, Abbuchungen, Mahnungen, Ratenpausen, Zahlungsprobleme, Insolvenz'},
+  rueckgabe:{l:'Rückgabe & Schaden', c:'--t-rueckgabe', d:'Fahrzeugrückgabe, Rückgabetermine, Unfälle, Schäden, Gutachten (sofern keine Beschwerde)'},
+  service:{l:'Kundenservice', c:'--t-service', d:'Stammdaten, allgemeine Fragen, Service und Wartung, Lob, Datenschutzanfragen'},
+  beschwerde:{l:'Beschwerdemanagement', c:'--t-beschwerde', d:'Ausdrückliche Beschwerden, Unzufriedenheit mit Service oder Entscheidungen, Kündigungsandrohungen, Ärger über ausbleibende Antworten'}
+};
+const URG = {hoch:'Hoch', mittel:'Mittel', niedrig:'Niedrig'};
+const MOOD = {positiv:'Positiv', neutral:'Neutral', 'verärgert':'Verärgert'};
+
+// t = richtige Lösung: [Team, Dringlichkeit, manuell?]
+const MAILS = [
+ {id:1, from:'Jana Brückner', subj:'Laufzeit verlängern?', t:['vertrag','mittel',false], body:`Hallo zusammen,
+
+mein Leasingvertrag für den Kombi läuft im Februar aus. Ich bin sehr zufrieden mit dem Auto und würde gerne um 12 Monate verlängern. Geht das, und ändert sich dann die monatliche Rate?
+
+Viele Grüße
+Jana Brückner
+Vertragsnummer LM-2023-48812`},
+ {id:2, from:'Thomas Weidlich', subj:'Rate doppelt abgebucht!', t:['forderung','hoch',false], body:`Guten Tag,
+
+Sie haben diesen Monat die Leasingrate zweimal von meinem Konto abgebucht, am 1. und am 3. Ich bitte um sofortige Rückerstattung, das Geld fehlt mir gerade für die Miete.
+
+T. Weidlich`},
+ {id:3, from:'Murat Kaya', subj:'Bitte um Ratenpause', t:['forderung','hoch',false], body:`Sehr geehrte Damen und Herren,
+
+ich habe leider letzte Woche meinen Job verloren. Ich habe bereits eine neue Stelle in Aussicht, aber erst ab Januar. Gibt es die Möglichkeit, die Raten für zwei Monate auszusetzen oder zu reduzieren? Ich möchte den Vertrag auf keinen Fall gefährden.
+
+Mit freundlichen Grüßen
+Murat Kaya`},
+ {id:4, from:'Sabine Hartmann', subj:'Rückgabetermin', t:['rueckgabe','mittel',false], body:`Hallo,
+
+mein Vertrag endet am 30.11. Wie und wo gebe ich das Fahrzeug zurück? Ich wohne in Leipzig, gibt es dort einen Standort? Am liebsten würde ich einen Termin in der Woche davor machen.
+
+Danke und Gruß
+Sabine Hartmann`},
+ {id:5, from:'Dirk Lehmann', subj:'Gutachten nach Rückgabe völlig überzogen', t:['beschwerde','hoch',false], body:`Guten Tag,
+
+ich habe heute das Rückgabegutachten bekommen. 1.240 € für "Kratzer an der Stoßstange" und eine "Delle in der Tür". Die Delle war bei Übergabe schon da, das steht sogar im Übergabeprotokoll! Und Kratzer dieser Art sind normale Gebrauchsspuren.
+
+Ich beschwere mich hiermit offiziell und erwarte eine Prüfung.
+
+Dirk Lehmann`},
+ {id:6, from:'Petra Nowak', subj:'Re: Schadensrechnung Vorgang 77-4410', t:['beschwerde','hoch',true], body:`Sehr geehrte Damen und Herren,
+
+bezüglich Ihrer Schadensrechnung vom 02.10. teile ich Ihnen mit, dass ich die Angelegenheit meinem Rechtsanwalt übergeben habe. Er wird sich in den nächsten Tagen bei Ihnen melden. Bis dahin werde ich keine Zahlung leisten.
+
+Petra Nowak`},
+ {id:7, from:'Lukas Schmid', subj:'Neue Adresse', t:['service','niedrig',false], body:`Hi,
+
+ich bin umgezogen. Neue Adresse: Gartenweg 12, 80331 München. Bitte im System ändern.
+
+Danke, Lukas`},
+ {id:8, from:'Karin Vogt', subj:'Rechnung', t:['forderung','mittel',false], body:`Wo ist meine Rechnung für Oktober???`},
+ {id:9, from:'Stefan Krüger', subj:'Wow, toller Service', t:['beschwerde','hoch',false], body:`Hallo,
+
+wirklich ganz großartig, wie schnell Sie antworten. Das ist jetzt meine dritte Mail zum selben Thema, und ich warte seit drei Wochen. Ganz toll, weiter so.
+
+Es geht immer noch um die fehlende Zulassungsbescheinigung, ohne die ich nicht ins Ausland fahren darf.
+
+S. Krüger`},
+ {id:10, from:'Anna Becker', subj:'Kilometer + neues Konto', t:['vertrag','mittel',false], body:`Guten Tag,
+
+zwei Dinge:
+1. Ich fahre deutlich mehr als gedacht. Kann ich meine Jahreskilometer von 15.000 auf 25.000 erhöhen?
+2. Ab nächstem Monat bitte die Rate von meinem neuen Konto abbuchen. Ein neues SEPA-Mandat schicke ich gerne zu, sagen Sie mir nur, wie.
+
+Danke!
+Anna Becker`},
+ {id:11, from:'Holger Brandt', subj:'Letzte Chance', t:['beschwerde','hoch',false], body:`Seit sechs Wochen funktioniert die Wallbox nicht, die laut Vertrag zum Paket gehört. Drei Techniker-Termine wurden abgesagt. Wenn das bis Freitag nicht gelöst ist, kündige ich den Servicevertrag und wechsle zu einem anderen Anbieter. Das werde ich dann auch öffentlich bewerten.
+
+Holger Brandt`},
+ {id:12, from:'Erik Lindqvist', subj:'Taking the car to Sweden', t:['vertrag','niedrig',false], body:`Hello,
+
+I'm a Swedish citizen working in Hamburg. I'd like to take my leased car to Sweden for about three months next summer to work remotely from there. Is that allowed under my contract, and do I need any documents or extra insurance?
+
+Best regards,
+Erik Lindqvist`},
+ {id:13, from:'Melanie Fuchs', subj:'Unfall gestern Abend', t:['rueckgabe','hoch',false], body:`Hallo,
+
+ich hatte gestern Abend einen Auffahrunfall, mir ist jemand hinten drauf gefahren. Niemand verletzt, aber das Auto ist nicht mehr fahrbereit und steht beim Abschleppdienst. Was muss ich jetzt tun? Brauche ich einen Gutachter von Ihnen? Ich bin auf das Auto angewiesen.
+
+Melanie Fuchs`},
+ {id:14, from:'Georg Albrecht', subj:'Mahnung, obwohl bezahlt', t:['forderung','hoch',false], body:`Sehr geehrte Damen und Herren,
+
+heute kam eine Mahnung über 389,00 € inklusive Mahngebühr. Ich habe die Rate aber am 05.09. überwiesen, der Beleg hängt an. Bitte stornieren Sie die Mahnung und die Gebühr umgehend.
+
+Georg Albrecht`},
+ {id:15, from:'Nina Pohl', subj:'Kollegin soll Vertrag übernehmen', t:['vertrag','mittel',false], body:`Hallo,
+
+ich ziehe beruflich nach Wien und brauche das Auto nicht mehr. Eine Kollegin würde meinen Leasingvertrag gerne übernehmen. Ist eine Vertragsübernahme möglich, und welche Unterlagen braucht sie?
+
+Viele Grüße
+Nina Pohl`},
+ {id:16, from:'Familie Osei', subj:'Danke!', t:['service','niedrig',false], body:`Liebes Team,
+
+wir wollten nur kurz Danke sagen. Die Übergabe unseres neuen Wagens lief super, Herr Demir hat sich viel Zeit genommen und alles erklärt. Gerne wieder!
+
+Familie Osei`},
+ {id:17, from:'Clara Wendt', subj:'Auskunft nach Art. 15 DSGVO', t:['service','mittel',true], body:`Sehr geehrte Damen und Herren,
+
+hiermit beantrage ich gemäß Art. 15 DSGVO Auskunft über alle zu meiner Person gespeicherten Daten, deren Herkunft, die Zwecke der Verarbeitung sowie etwaige Empfänger. Bitte senden Sie mir die Auskunft innerhalb der gesetzlichen Frist.
+
+Clara Wendt`},
+ {id:18, from:'Jonas Richter', subj:'Vertrag früher beenden', t:['vertrag','mittel',false], body:`Hallo,
+
+wir bekommen Nachwuchs und brauchen ein größeres Auto. Mein Vertrag läuft noch 14 Monate. Kann ich ihn vorzeitig beenden, und mit welchen Kosten muss ich rechnen? Oder gibt es die Möglichkeit, auf ein größeres Modell bei Ihnen umzusteigen?
+
+Jonas Richter`},
+ {id:19, from:'Ralf Engel, Engel Logistik GmbH', subj:'Flottenverträge, Insolvenzantrag', t:['forderung','hoch',true], body:`Sehr geehrte Damen und Herren,
+
+wir müssen Ihnen leider mitteilen, dass die Engel Logistik GmbH am 08.10. Insolvenz beantragt hat. Betroffen sind unsere 14 Leasingfahrzeuge. Der vorläufige Insolvenzverwalter wird sich zur weiteren Vorgehensweise bei Ihnen melden.
+
+Ralf Engel
+Geschäftsführer`},
+ {id:20, from:'Tim Hoffmeister', subj:'Reifenwechsel', t:['service','niedrig',false], body:`Moin, wo kann ich die Winterreifen aufziehen lassen? Ist das im Servicepaket drin?`}
+];
+
+const LS_KEY = 'mail-routing-lab.v1';
+let st = {results:{}, custom:[], mails:2000, min:4, conf:70, timing:[]};
+try { const raw = localStorage.getItem(LS_KEY); if (raw) { const s = JSON.parse(raw); if (s && s.results) st = {...st, ...s}; } } catch(e) {}
+const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(st)); } catch(e) {} };
+
+let selected = 1, running = false, sampleFn = null, aiState = 'waiting';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const allMails = () => [...MAILS, ...st.custom];
+const mailById = id => allMails().find(m => m.id === id);
+const fmt = (n, d = 0) => Number(n).toLocaleString('de-DE', {minimumFractionDigits:d, maximumFractionDigits:d});
+
+/* ---------- Regeln ---------- */
+const LEGAL = /(rechts)?anwalt|anwältin|klage|gericht|insolvenz|verbraucherzentrale|dsgvo|art\.?\s*15|datenschutzbehörde|abmahnung/i;
+const ESCAL = /kündig|beschwer|wechsle|anbieter wechseln|öffentlich bewerten/i;
+function applyRules(mail, r){
+  const out = {...r, rules:[]};
+  const text = mail.subj + '\n' + mail.body;
+  if (LEGAL.test(text)) {
+    out.manuell = true; out.antwort = '';
+    out.rules.push('Rechtliches Thema erkannt: manuell prüfen, kein Antwortentwurf.');
+  }
+  if (ESCAL.test(text) && out.dringlichkeit !== 'hoch') {
+    out.dringlichkeit = 'hoch';
+    out.rules.push('Kündigungsandrohung oder Beschwerde: Dringlichkeit auf hoch gesetzt.');
+  }
+  return out;
+}
+// Mindest-Sicherheit wird live angewendet, damit der Regler sofort wirkt
+const isManual = r => r.manuell || r.sicherheit < st.conf;
+
+/* ---------- Claude ---------- */
+function prompt(batch){
+  return `Du bist das KI-Routing für den Kundenservice der Lumen Mobility Leasing GmbH, eines Leasinganbieters für Privat- und Flottenkunden. Klassifiziere jede Mail.
+
+Teams (wähle genau einen Schlüssel):
+${Object.entries(TEAMS).map(([k, t]) => `- ${k}: ${t.l}. Zuständig für ${t.d}`).join('\n')}
+
+Regeln:
+- dringlichkeit: "hoch" bei Geldverlust für den Kunden, Fahrzeug nicht nutzbar, Fristen, Beschwerden, Kündigungsandrohung oder deutlichem Ärger; "mittel" bei normalen Anliegen mit Handlungsbedarf; "niedrig" bei Info-Fragen, Lob, Stammdaten.
+- Ironie erkennen: scheinbares Lob mit Ärger dahinter ist eine Beschwerde.
+- Bei mehreren Anliegen das wichtigste für das Team nehmen, die übrigen in "weitere_anliegen".
+- manuell: true bei rechtlichen Themen (Anwalt, Klage, Insolvenz, DSGVO-Auskunft) oder wenn du unsicher bist.
+- sicherheit: 0 bis 100, wie sicher du bei der Team-Zuordnung bist. Sei ehrlich.
+- antwort: kurzer, freundlicher Antwortentwurf in der Sprache der Mail, Sie-Form (bei englischen Mails formell), ohne Versprechen zu Geld oder Kulanz, Platzhalter in eckigen Klammern für Unbekanntes, Gruß "Ihr Kundenservice-Team der Lumen Mobility". Leerer String, wenn manuell true.
+- Keine Gedankenstriche verwenden.
+
+Antworte nur mit einem JSON-Array, ein Objekt pro Mail:
+{"id": 1, "anliegen": "2 bis 4 Wörter", "team": "vertrag", "dringlichkeit": "mittel", "stimmung": "neutral", "zusammenfassung": "1 Satz", "weitere_anliegen": "", "manuell": false, "sicherheit": 90, "begruendung": "1 kurzer Satz", "antwort": "..."}
+stimmung ist "positiv", "neutral" oder "verärgert".
+
+Mails:
+${batch.map(m => `### Mail ${m.id}\nVon: ${m.from}\nBetreff: ${m.subj}\n\n${m.body}`).join('\n\n')}`;
+}
+function normTeam(v){
+  const s = String(v || '').toLowerCase();
+  if (TEAMS[s]) return s;
+  const hit = Object.entries(TEAMS).find(([k, t]) => s.includes(k) || s.includes(t.l.toLowerCase().split(' ')[0]));
+  return hit ? hit[0] : 'service';
+}
+const normEnum = (v, set, def) => { const s = String(v || '').toLowerCase().trim(); return set[s] ? s : def; };
+function normalize(r){
+  return {
+    anliegen:String(r.anliegen || '').slice(0, 60),
+    team:normTeam(r.team),
+    dringlichkeit:normEnum(r.dringlichkeit, URG, 'mittel'),
+    stimmung:normEnum(r.stimmung, MOOD, 'neutral'),
+    zusammenfassung:String(r.zusammenfassung || '').slice(0, 300),
+    weitere:String(r.weitere_anliegen || '').slice(0, 200),
+    manuell:!!r.manuell,
+    sicherheit:Math.max(0, Math.min(100, Math.round(Number(r.sicherheit) || 0))),
+    begruendung:String(r.begruendung || '').slice(0, 240),
+    antwort:String(r.antwort || '').slice(0, 2000)
+  };
+}
+
+async function classify(mails){
+  if (!sampleFn || running) return;
+  running = true; renderControls();
+  const batches = [];
+  for (let i = 0; i < mails.length; i += 5) batches.push(mails.slice(i, i + 5));
+  let done = 0, failed = false;
+  setProgress(0, mails.length);
+  for (const b of batches) {
+    b.forEach(m => { st.results[m.id] = {pending:true}; });
+    renderAll();
+    const t0 = performance.now();
+    try {
+      const out = await sampleFn.json(prompt(b), {cache:false});
+      const arr = Array.isArray(out) ? out : (out && Array.isArray(out.mails) ? out.mails : []);
+      const sec = (performance.now() - t0) / 1000;
+      st.timing.push(sec / b.length); st.timing = st.timing.slice(-40);
+      b.forEach((m, i) => {
+        const r = arr.find(x => x && Number(x.id) === m.id) || arr[i];
+        st.results[m.id] = r ? applyRules(m, normalize(r)) : {error:true};
+      });
+    } catch(e) {
+      b.forEach(m => { delete st.results[m.id]; });
+      failed = true;
+      handleError(e);
+      break;
+    }
+    done += b.length; setProgress(done, mails.length);
+    save(); renderAll();
+  }
+  running = false; save(); renderAll();
+  if (!failed) toast(`${done} Mail${done > 1 ? 's' : ''} klassifiziert`);
+  setTimeout(() => { if (!running) $('#progress').hidden = true; }, 1500);
+}
+function handleError(e){
+  const code = e && e.code;
+  if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(code)) { aiState = 'off'; renderControls(); toast('Claude ist in dieser Ansicht nicht freigegeben'); }
+  else if (code === 'rate_limited') toast('Gerade zu viele Anfragen. Bitte gleich nochmal versuchen');
+  else if (code === 'session_expired') toast('Bitte neu bei Claude anmelden');
+  else if (code !== 'cancelled') toast('Klassifizierung fehlgeschlagen. Bitte nochmal versuchen');
+}
+function setProgress(d, n){
+  $('#progress').hidden = false;
+  $('#progBar').style.width = (n ? d / n * 100 : 0) + '%';
+  $('#progText').textContent = d < n ? `Claude liest Mail ${Math.min(d + 1, n)} bis ${Math.min(d + 5, n)} von ${n}` : 'Fertig';
+}
+
+/* ---------- Auswertung ---------- */
+function evalStats(){
+  const scored = MAILS.filter(m => st.results[m.id] && st.results[m.id].team);
+  const n = scored.length;
+  const teamOk = scored.filter(m => st.results[m.id].team === m.t[0]).length;
+  const urgOk = scored.filter(m => st.results[m.id].dringlichkeit === m.t[1]).length;
+  const manTruth = scored.filter(m => m.t[2]);
+  const manHit = manTruth.filter(m => isManual(st.results[m.id])).length;
+  const allRes = allMails().map(m => st.results[m.id]).filter(r => r && r.team);
+  const auto = allRes.filter(r => !isManual(r)).length;
+  const autoOk = scored.filter(m => !isManual(st.results[m.id]) && st.results[m.id].team === m.t[0]).length;
+  const autoN = scored.filter(m => !isManual(st.results[m.id])).length;
+  const t = st.timing.length ? st.timing.reduce((a, b) => a + b, 0) / st.timing.length : null;
+  return {n, teamOk, urgOk, manTruth:manTruth.length, manHit, autoShare: allRes.length ? auto / allRes.length : 0, autoAcc: autoN ? autoOk / autoN : 0, autoN, sec:t};
+}
+
+/* ---------- Render ---------- */
+function renderControls(){
+  const b = $('#btnRun');
+  b.disabled = running || !sampleFn;
+  b.textContent = running ? 'Claude arbeitet …' : (Object.keys(st.results).length ? 'Alle neu klassifizieren' : 'Alle 20 Mails klassifizieren');
+  $('#btnReset').disabled = running || !Object.keys(st.results).length;
+  $('#btnOwn').disabled = running || !sampleFn;
+  const note = $('#aiNote');
+  if (aiState === 'off') { note.hidden = false; note.innerHTML = '<strong>Claude ist hier nicht verfügbar.</strong> Öffne die Seite in Claude und erlaube den Zugriff, um Mails zu klassifizieren. Vorhandene Ergebnisse bleiben sichtbar.'; }
+  else if (!sampleFn && aiState === 'waiting') { note.hidden = false; note.textContent = 'Verbindung zu Claude wird aufgebaut …'; }
+  else note.hidden = true;
+}
+function teamChip(k){ return `<span class="chip t" style="--tc:var(${TEAMS[k].c})">${TEAMS[k].l}</span>`; }
+
+function renderKpis(){
+  const s = evalStats();
+  if (!s.n) {
+    $('#kpis').innerHTML = `<div class="kpi" style="grid-column:1/-1"><span class="l">Noch keine Ergebnisse. Starte oben mit „Alle 20 Mails klassifizieren“. Dauert etwa eine Minute.</span></div>`;
+    return;
+  }
+  const pct = (a, b) => b ? Math.round(a / b * 100) + ' %' : '–';
+  $('#kpis').innerHTML = `
+    <div class="kpi"><span class="v">${pct(s.teamOk, s.n)}</span><span class="l">richtiges Team</span><span class="s">${s.teamOk} von ${s.n} Mails</span></div>
+    <div class="kpi"><span class="v">${pct(s.urgOk, s.n)}</span><span class="l">richtige Dringlichkeit</span><span class="s">${s.urgOk} von ${s.n} Mails</span></div>
+    <div class="kpi"><span class="v">${s.manHit} / ${s.manTruth}</span><span class="l">kritische Fälle beim Menschen</span><span class="s">Anwalt, Insolvenz, DSGVO</span></div>
+    <div class="kpi"><span class="v">${Math.round(s.autoShare * 100)} %</span><span class="l">automatisch geroutet</span><span class="s">ab ${st.conf} % Sicherheit</span></div>
+    <div class="kpi"><span class="v">${s.sec ? fmt(s.sec, 1) + ' s' : '–'}</span><span class="l">pro Mail mit Claude</span><span class="s">inkl. Antwortentwurf</span></div>`;
+}
+
+function renderInbox(){
+  $('#inbox').innerHTML = allMails().map(m => {
+    const r = st.results[m.id];
+    let tags = '';
+    if (r && r.pending) tags = '<span class="chip pending">Claude liest …</span>';
+    else if (r && r.error) tags = '<span class="chip pending">Keine Antwort, bitte erneut</span>';
+    else if (r) {
+      const ok = m.t ? r.team === m.t[0] : null;
+      tags = teamChip(r.team) + `<span class="chip ${r.dringlichkeit}">${URG[r.dringlichkeit]}</span>` + (isManual(r) ? '<span class="chip man">Mensch prüft</span>' : '')
+        + (ok === null ? '' : `<span class="mark ${ok ? 'ok' : 'bad'}">${ok ? '✓ richtig' : '✗ falsch'}</span>`);
+    } else tags = '<span class="chip pending">nicht klassifiziert</span>';
+    const prev = m.body.replace(/\s+/g, ' ').slice(0, 110);
+    return `<li data-id="${m.id}" class="${m.id === selected ? 'sel' : ''}" tabindex="0">
+      <div class="mrow"><span class="mfrom">${esc(m.from)}</span><span class="mnum">${m.t ? '#' + m.id : 'eigene'}</span></div>
+      <span class="msubj">${esc(m.subj)}</span>
+      <span class="mprev">${esc(prev)}</span>
+      <span class="mtags">${tags}</span></li>`;
+  }).join('');
+}
+
+function cmp(ok, soll){ return ok === null ? '' : `<span class="cmp ${ok ? 'ok' : 'bad'}">${ok ? '✓ stimmt' : '✗ Soll: ' + soll}</span>`; }
+function renderDetail(){
+  const m = mailById(selected);
+  if (!m) { $('#detail').innerHTML = '<p class="empty">Wähle links eine Mail aus.</p>'; return; }
+  const r = st.results[m.id];
+  let res = '';
+  if (r && r.pending) res = '<p class="busy">Claude liest diese Mail …</p>';
+  else if (!r || r.error) res = `<p class="empty">Noch nicht klassifiziert.</p>${sampleFn ? `<div class="actions" style="justify-content:center"><button class="small" data-one="${m.id}"${running ? ' disabled' : ''}>Diese Mail klassifizieren</button></div>` : ''}`;
+  else {
+    const t = m.t;
+    const man = isManual(r);
+    res = `
+      <div class="fields">
+        <div class="field"><span class="k">Team</span><span class="v">${teamChip(r.team)}</span>${t ? cmp(r.team === t[0], TEAMS[t[0]].l) : ''}</div>
+        <div class="field"><span class="k">Dringlichkeit</span><span class="v"><span class="chip ${r.dringlichkeit}">${URG[r.dringlichkeit]}</span></span>${t ? cmp(r.dringlichkeit === t[1], URG[t[1]]) : ''}</div>
+        <div class="field"><span class="k">Stimmung</span><span class="v">${MOOD[r.stimmung]}</span></div>
+        <div class="field"><span class="k">Sicherheit</span><span class="v" style="font-family:var(--font-num)">${r.sicherheit} %</span></div>
+        <div class="field"><span class="k">Anliegen</span><span class="v">${esc(r.anliegen)}</span></div>
+        <div class="field"><span class="k">Bearbeitung</span><span class="v">${man ? '<span class="chip man">Mensch prüft</span>' : 'automatisch'}</span>${t ? cmp(man === t[2], t[2] ? 'Mensch prüft' : 'automatisch') : ''}</div>
+      </div>
+      <div class="field"><span class="k">Zusammenfassung</span><p class="summary">${esc(r.zusammenfassung)}${r.weitere ? `<br><span class="why">Weiteres Anliegen: ${esc(r.weitere)}</span>` : ''}</p></div>
+      <p class="why">Begründung: ${esc(r.begruendung)}</p>
+      ${r.rules && r.rules.length ? `<div class="rules">${r.rules.map(x => `<span class="rulehit">Regel greift: ${esc(x)}</span>`).join('')}</div>` : ''}
+      ${!r.rules?.length && r.sicherheit < st.conf && !r.manuell ? `<div class="rules"><span class="rulehit">Regel greift: Sicherheit unter ${st.conf} %, ein Mensch prüft.</span></div>` : ''}
+      <div class="draft"><span class="field"><span class="k">Antwortentwurf</span></span>
+        ${r.antwort ? `<pre>${esc(r.antwort)}</pre><div class="actions"><button class="small ghost" data-copy="${m.id}">Entwurf kopieren</button>${sampleFn ? `<button class="small ghost" data-one="${m.id}"${running ? ' disabled' : ''}>Neu klassifizieren</button>` : ''}</div>`
+          : `<p class="blocked">Kein Entwurf. Diese Mail geht ohne KI-Antwort an einen Menschen.</p>${sampleFn ? `<div class="actions"><button class="small ghost" data-one="${m.id}"${running ? ' disabled' : ''}>Neu klassifizieren</button></div>` : ''}`}
+      </div>`;
+  }
+  $('#detail').innerHTML = `
+    <div class="dhead"><span class="from">Von: ${esc(m.from)}${m.t ? ' · Mail #' + m.id : ' · eigene Testmail'}</span><span class="subj">${esc(m.subj)}</span></div>
+    <div class="dbody">${esc(m.body)}</div>
+    <h3>Ergebnis von Claude</h3>
+    ${res}`;
+}
+
+function renderCalc(){
+  const s = evalStats();
+  const mails = Math.max(0, +st.mails || 0), min = Math.max(0, +st.min || 0);
+  if (!s.n) { $('#calc').innerHTML = '<span style="grid-column:1/-1;color:var(--muted)">Erscheint nach der ersten Klassifizierung.</span><span></span>'; return; }
+  const base = mails * min / 60;
+  const autoMails = mails * s.autoShare;
+  const saved = autoMails * min / 60;
+  const errMails = autoMails * (1 - s.autoAcc);
+  const rework = errMails * min * 2 / 60; // Fehlrouting kostet doppelt: falsches Team liest, richtiges Team liest
+  const net = saved - rework;
+  $('#calc').innerHTML = `
+    <span>Aufwand heute für Sortieren</span><span>${fmt(base)} h</span>
+    <span>Davon automatisch geroutet (${Math.round(s.autoShare * 100)} %)</span><span>${fmt(saved)} h</span>
+    <span class="neg">Nacharbeit durch Fehlrouting (${Math.round((1 - s.autoAcc) * 100)} % der automatischen)</span><span class="neg">−${fmt(rework)} h</span>
+    <span class="tot">Netto gespart pro Monat</span><span class="tot">${fmt(net)} h</span>
+    <span>Entspricht etwa</span><span>${fmt(net / 140, 1)} Vollzeitstellen</span>`;
+}
+
+function renderBars(){
+  const res = allMails().map(m => st.results[m.id]).filter(r => r && r.team);
+  if (!res.length) { $('#bars').innerHTML = '<p class="empty">Erscheint nach der ersten Klassifizierung.</p>'; return; }
+  const max = Math.max(...Object.keys(TEAMS).map(k => res.filter(r => r.team === k).length), 1);
+  $('#bars').innerHTML = Object.entries(TEAMS).map(([k, t]) => {
+    const n = res.filter(r => r.team === k).length, nm = res.filter(r => r.team === k && isManual(r)).length;
+    return `<div class="barrow"><span>${t.l}</span><span class="tr" title="${nm} davon prüft ein Mensch"><i style="width:${n / max * 100}%;background:var(${t.c})"></i></span><span class="n">${n}</span></div>`;
+  }).join('') + `<p class="why">${res.filter(isManual).length} von ${res.length} Mails gehen zusätzlich an einen Menschen.</p>`;
+}
+
+function renderAll(){ renderControls(); renderKpis(); renderInbox(); renderDetail(); renderCalc(); renderBars(); }
+
+/* ---------- Toast ---------- */
+let tt;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => { t.hidden = true; }, 3200); }
+
+/* ---------- Events ---------- */
+$('#inbox').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) { selected = +li.dataset.id; renderInbox(); renderDetail(); } });
+$('#inbox').addEventListener('keydown', e => { const li = e.target.closest('li[data-id]'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selected = +li.dataset.id; renderInbox(); renderDetail(); } });
+$('#detail').addEventListener('click', e => {
+  const one = e.target.closest('[data-one]'), cp = e.target.closest('[data-copy]');
+  if (one) { const m = mailById(+one.dataset.one); if (m) classify([m]); }
+  if (cp) {
+    const r = st.results[+cp.dataset.copy]; if (!r) return;
+    try { navigator.clipboard.writeText(r.antwort).then(() => toast('Entwurf kopiert'), () => toast('Kopieren nicht möglich. Text bitte markieren')); }
+    catch(err) { toast('Kopieren nicht möglich. Text bitte markieren'); }
+  }
+});
+$('#btnRun').addEventListener('click', () => classify(MAILS.slice()));
+$('#btnReset').addEventListener('click', () => { st.results = {}; st.timing = []; save(); renderAll(); toast('Ergebnisse gelöscht'); });
+$('#btnOwn').addEventListener('click', () => {
+  const body = $('#ownBody').value.trim(); if (!body) { toast('Bitte erst einen Mailtext eingeben'); return; }
+  const id = 1000 + st.custom.length + 1 + Math.floor(Math.random() * 1000);
+  const m = {id, from:'Eigene Testmail', subj:$('#ownSubj').value.trim() || '(ohne Betreff)', body};
+  st.custom.unshift(m); selected = id; save();
+  $('#ownBody').value = ''; $('#ownSubj').value = '';
+  renderAll(); classify([m]);
+  $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
+});
+const inMails = $('#inMails'), inMin = $('#inMin'), inConf = $('#inConf');
+inMails.value = st.mails; inMin.value = st.min; inConf.value = st.conf; $('#outConf').textContent = st.conf + ' %';
+inMails.addEventListener('input', () => { st.mails = +inMails.value; save(); renderCalc(); });
+inMin.addEventListener('input', () => { st.min = +inMin.value; save(); renderCalc(); });
+inConf.addEventListener('input', () => { st.conf = +inConf.value; $('#outConf').textContent = st.conf + ' %'; save(); renderAll(); });
+
+// laufende Klassifizierungen aus einem abgebrochenen Besuch aufräumen
+Object.keys(st.results).forEach(k => { if (st.results[k].pending) delete st.results[k]; });
+renderAll();
+try {
+  if (window.claude && claude.use) claude.use('sample').then(s => { sampleFn = s; aiState = s ? 'on' : 'off'; renderAll(); }, () => { aiState = 'off'; renderControls(); });
+  else { aiState = 'off'; renderControls(); }
+} catch(e) { aiState = 'off'; renderControls(); }
+</script>
+
+</body></html>
